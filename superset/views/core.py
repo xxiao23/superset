@@ -2751,34 +2751,57 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
         )
 
     @event_logger.log_this
-    @expose("/welcome")
+    @expose("/welcome", methods=["GET", "POST"])
     def welcome(self) -> FlaskResponse:
-        """Personalized welcome page"""
-        if not g.user or not g.user.get_id():
-            if conf.get("PUBLIC_ROLE_LIKE_GAMMA", False) or conf["PUBLIC_ROLE_LIKE"]:
-                return self.render_template("superset/public_welcome.html")
-            return redirect(appbuilder.get_url_for_login)
-
-        welcome_dashboard_id = (
-            db.session.query(UserAttribute.welcome_dashboard_id)
-            .filter_by(user_id=g.user.get_id())
-            .scalar()
-        )
-        if welcome_dashboard_id:
-            return self.dashboard(str(welcome_dashboard_id))
-
+        """SQL Editor"""
         payload = {
-            "user": bootstrap_user_data(g.user),
+            "defaultDbId": config["SQLLAB_DEFAULT_DBID"],
             "common": common_bootstrap_payload(),
+            **self._get_sqllab_tabs(g.user.get_id()),
         }
 
-        return self.render_template(
-            "superset/crud_views.html",
-            entry="crudViews",
-            bootstrap_data=json.dumps(
-                payload, default=utils.pessimistic_json_iso_dttm_ser
-            ),
+        form_data = request.form.get("form_data")
+        if form_data:
+            try:
+                payload["requested_query"] = json.loads(form_data)
+            except json.JSONDecodeError:
+                pass
+
+        payload["user"] = bootstrap_user_data(g.user)
+        bootstrap_data = json.dumps(
+            payload, default=utils.pessimistic_json_iso_dttm_ser
         )
+
+        return self.render_template(
+            "superset/basic.html", entry="sqllab", bootstrap_data=bootstrap_data
+        )
+
+        # """Personalized welcome page"""
+        # if not g.user or not g.user.get_id():
+        #     if conf.get("PUBLIC_ROLE_LIKE_GAMMA", False) or conf["PUBLIC_ROLE_LIKE"]:
+        #         return self.render_template("superset/public_welcome.html")
+        #     return redirect(appbuilder.get_url_for_login)
+
+        # welcome_dashboard_id = (
+        #     db.session.query(UserAttribute.welcome_dashboard_id)
+        #     .filter_by(user_id=g.user.get_id())
+        #     .scalar()
+        # )
+        # if welcome_dashboard_id:
+        #     return self.dashboard(str(welcome_dashboard_id))
+
+        # payload = {
+        #     "user": bootstrap_user_data(g.user),
+        #     "common": common_bootstrap_payload(),
+        # }
+
+        # return self.render_template(
+        #     "superset/crud_views.html",
+        #     entry="crudViews",
+        #     bootstrap_data=json.dumps(
+        #         payload, default=utils.pessimistic_json_iso_dttm_ser
+        #     ),
+        # )
 
     @has_access
     @event_logger.log_this
