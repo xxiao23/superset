@@ -32,6 +32,7 @@ import { Tooltip } from 'src/common/components/Tooltip';
 import * as Actions from '../actions/sqlLab';
 import SqlEditor from './SqlEditor';
 import TabStatusIcon from './TabStatusIcon';
+import SqlEditor2 from './SqlEditor2';
 
 const propTypes = {
   actions: PropTypes.object.isRequired,
@@ -374,6 +375,11 @@ class TabbedSqlEditors extends React.PureComponent {
           <TabTitle>{qe.title}</TabTitle> <TabStatusIcon tabState={state} />{' '}
         </TabTitleWrapper>
       );
+      const editor = (
+        <SqlEditor2
+          databases={this.props.databases}
+        />
+      )
       return (
         <EditableTabs.TabPane
           key={qe.id}
@@ -381,21 +387,7 @@ class TabbedSqlEditors extends React.PureComponent {
           // for tests - key prop isn't handled by enzyme well bcs it's a react keyword
           data-key={qe.id}
         >
-          <SqlEditor
-            tables={this.props.tables.filter(xt => xt.queryEditorId === qe.id)}
-            queryEditorId={qe.id}
-            editorQueries={this.state.queriesArray}
-            dataPreviewQueries={this.state.dataPreviewQueries}
-            latestQuery={latestQuery}
-            database={database}
-            actions={this.props.actions}
-            hideLeftBar={this.state.hideLeftBar}
-            defaultQueryLimit={this.props.defaultQueryLimit}
-            maxRow={this.props.maxRow}
-            displayLimit={this.props.displayLimit}
-            saveQueryWarning={this.props.saveQueryWarning}
-            scheduleQueryWarning={this.props.scheduleQueryWarning}
-          />
+          {editor}
         </EditableTabs.TabPane>
       );
     });
