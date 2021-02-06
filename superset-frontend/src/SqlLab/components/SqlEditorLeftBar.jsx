@@ -149,7 +149,6 @@ export default class SqlEditorLeftBar extends React.PureComponent {
                 actions={this.props.actions}
               />
             ))}
-            <DatabaseList />
           </StyledScrollbarContent>
         </StyledScrollbarContainer>
         {shouldShowReset && (
