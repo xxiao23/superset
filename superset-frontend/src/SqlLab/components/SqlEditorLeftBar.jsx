@@ -21,7 +21,6 @@ import PropTypes from 'prop-types';
 import Button from 'src/components/Button';
 import { t, styled } from '@superset-ui/core';
 import TableElement from './TableElement';
-import DatabaseList from './DatabaseList';
 import TableSelector from '../../components/TableSelector';
 
 const propTypes = {
