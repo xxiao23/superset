@@ -379,6 +379,21 @@ class TabbedSqlEditors extends React.PureComponent {
         <SqlEditor2
           databases={this.props.databases}
         />
+        // <SqlEditor
+        //   tables={this.props.tables.filter(xt => xt.queryEditorId === qe.id)}
+        //   queryEditorId={qe.id}
+        //   editorQueries={this.state.queriesArray}
+        //   dataPreviewQueries={this.state.dataPreviewQueries}
+        //   latestQuery={latestQuery}
+        //   database={database}
+        //   actions={this.props.actions}
+        //   hideLeftBar={this.state.hideLeftBar}
+        //   defaultQueryLimit={this.props.defaultQueryLimit}
+        //   maxRow={this.props.maxRow}
+        //   displayLimit={this.props.displayLimit}
+        //   saveQueryWarning={this.props.saveQueryWarning}
+        //   scheduleQueryWarning={this.props.scheduleQueryWarning}
+        // />
       )
       return (
         <EditableTabs.TabPane
