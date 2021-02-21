@@ -91,6 +91,8 @@ export const CREATE_DATASOURCE_STARTED = 'CREATE_DATASOURCE_STARTED';
 export const CREATE_DATASOURCE_SUCCESS = 'CREATE_DATASOURCE_SUCCESS';
 export const CREATE_DATASOURCE_FAILED = 'CREATE_DATASOURCE_FAILED';
 
+export const FETCH_DATABASE_SCHEMAS = 'FETCH_DATABASE_SCEHMAS';
+
 export const addInfoToast = addInfoToastAction;
 export const addSuccessToast = addSuccessToastAction;
 export const addDangerToast = addDangerToastAction;
@@ -1294,5 +1296,12 @@ export function createCtasDatasource(vizOptions) {
         dispatch(createDatasourceFailed(errorMsg));
         return Promise.reject(new Error(errorMsg));
       });
+  };
+}
+
+export function fetchDatabaseSchemas(databaseId, databaseName) {
+  return { 
+    type: FETCH_DATABASE_SCHEMAS,
+    databaseId,
   };
 }

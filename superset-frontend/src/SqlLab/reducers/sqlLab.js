@@ -532,6 +532,16 @@ export default function sqlLabReducer(state = {}, action) {
     [actions.CREATE_DATASOURCE_FAILED]() {
       return { ...state, isDatasourceLoading: false, errorMessage: action.err };
     },
+    [actions.FETCH_DATABASE_SCHEMAS]() {
+      const databaseId = action.databaseId;
+      return {
+        ...state,
+        schemasByDb: {
+          ...state.schemasByDb,
+          [databaseId]: ['schema_test'],
+        }
+      };
+    }
   };
   if (action.type in actionHandlers) {
     return actionHandlers[action.type]();
