@@ -24,7 +24,7 @@ function DatabaseItem(props) {
         <ul>
             {props.schemas && props.schemas.length
                 ? props.schemas.map((schema, index) => {
-                    return <li key={`schema-${props.db_id}-${index}`}>{schema}</li>;
+                    return <li key={`schema-${props.db_id}-${index}`}>{schema.value}</li>;
                   })
                 : "No schemas"}
         </ul>
@@ -52,13 +52,6 @@ DatabaseItem.propTypes = propTypes;
 function mapStateToProps(state, props) {
     const { sqlLab } = state;
     const schemas = sqlLab.schemasByDb[props.db_id];
-    // const database = sqlLab.databases.find(
-    //     database => database.explore_database_id = props.db_id,
-    // )
-    // const queryEditor = sqlLab.queryEditor.find(
-    //     editor => editor.id === props.queryEditorId,
-    // );
-
     return { sqlLab, ...props, schemas };
 }
 

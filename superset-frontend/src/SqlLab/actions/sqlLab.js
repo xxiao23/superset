@@ -21,6 +21,7 @@ import JSONbig from 'json-bigint';
 import { t, SupersetClient } from '@superset-ui/core';
 import invert from 'lodash/invert';
 import mapKeys from 'lodash/mapKeys';
+import rison from 'rison';
 import { isFeatureEnabled, FeatureFlag } from 'src/featureFlags';
 
 import { now } from '../../modules/dates';
@@ -1300,8 +1301,23 @@ export function createCtasDatasource(vizOptions) {
 }
 
 export function fetchDatabaseSchemas(databaseId, databaseName) {
-  return { 
-    type: FETCH_DATABASE_SCHEMAS,
-    databaseId,
+  const queryParams = rison.encode({
+    force: true,
+  });
+  const endpoint = `/api/v1/database/${databaseId}/schemas/?q=${queryParams}`;
+  return dispatch => {
+    return SupersetClient.get({ endpoint })
+      .then(({ json }) => {
+        const schemas = json.result.map((s) => ({
+          value: s,
+          label: s,
+          title: s,
+        }));
+        dispatch({
+          type: FETCH_DATABASE_SCHEMAS,
+          databaseId,
+          schemas,
+        });
+      });
   };
 }

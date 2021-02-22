@@ -534,11 +534,12 @@ export default function sqlLabReducer(state = {}, action) {
     },
     [actions.FETCH_DATABASE_SCHEMAS]() {
       const databaseId = action.databaseId;
+      const schemas = action.schemas;
       return {
         ...state,
         schemasByDb: {
           ...state.schemasByDb,
-          [databaseId]: ['schema_test'],
+          [databaseId]: schemas,
         }
       };
     }
