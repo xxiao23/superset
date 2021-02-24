@@ -93,6 +93,7 @@ export const CREATE_DATASOURCE_SUCCESS = 'CREATE_DATASOURCE_SUCCESS';
 export const CREATE_DATASOURCE_FAILED = 'CREATE_DATASOURCE_FAILED';
 
 export const FETCH_DATABASE_SCHEMAS = 'FETCH_DATABASE_SCEHMAS';
+export const FETCH_SCHEMA_TABLES = 'FETCH_SCHEMA_TABLES';
 
 export const addInfoToast = addInfoToastAction;
 export const addSuccessToast = addSuccessToastAction;
@@ -1319,5 +1320,36 @@ export function fetchDatabaseSchemas(databaseId, databaseName) {
           schemas,
         });
       });
+  };
+}
+
+export function fetchSchemaTables(databaseId, schema) {
+  const encodedSchema = encodeURIComponent(schema.value);
+  const encodedSubstr = encodeURIComponent('undefined');
+  const forceRefresh = false;
+  const endpoint = encodeURI(
+    `/superset/tables/${databaseId}/${encodedSchema}/${encodedSubstr}/${!!forceRefresh}/`,
+  );
+  return dispatch => {
+    return SupersetClient.get({ endpoint })
+    .then(({ json }) => {
+      const tables = json.options.map((o) => ({
+        value: o.value,
+        schema: o.schema,
+        label: o.label,
+        title: o.title,
+        type: o.type,
+        extra: o?.extra,
+      }));
+      dispatch({
+        type: FETCH_SCHEMA_TABLES,
+        databaseId,
+        schema,
+        tables,
+      });
+    })
+    .catch(() => {
+      handleError(t('Error while fetching table list'));
+    });
   };
 }

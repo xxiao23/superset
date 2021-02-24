@@ -7,6 +7,7 @@ import { Collapse, ListGroup, ListGroupItem } from 'react-bootstrap';
 import {
     fetchDatabaseSchemas
 } from '../actions/sqlLab';
+import DatabaseSchemaItem from './DatabaseSchemaItem';
 
 const propTypes = {
     schemas: PropTypes.array,
@@ -21,13 +22,15 @@ function DatabaseItem(props) {
     console.log('DatabaseItem props:');
     console.log(props);
     const schema_divs = (
-        <ul>
+        <ListGroup>
             {props.schemas && props.schemas.length
                 ? props.schemas.map((schema, index) => {
-                    return <li key={`schema-${props.db_id}-${index}`}>{schema.value}</li>;
-                  })
+                    return (<DatabaseSchemaItem
+                        schema={schema}
+                        databaseId={props.db_id} />);
+                })
                 : "No schemas"}
-        </ul>
+        </ListGroup>
     );
 
     return (

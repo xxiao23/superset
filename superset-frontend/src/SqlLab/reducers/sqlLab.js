@@ -542,6 +542,19 @@ export default function sqlLabReducer(state = {}, action) {
           [databaseId]: schemas,
         }
       };
+    },
+    [actions.FETCH_SCHEMA_TABLES]() {
+      const databaseId = action.databaseId;
+      const schema = action.schema;
+      const db_schema = databaseId.toString().concat('.', schema.value);
+      const tables = action.tables;
+      return {
+        ...state,
+        tablesByDbSchema: {
+          ...state.tablesByDbSchema,
+          [db_schema]: tables,
+        }
+      }
     }
   };
   if (action.type in actionHandlers) {
