@@ -54,7 +54,7 @@ DatabaseItem.propTypes = propTypes;
 
 function mapStateToProps(state, props) {
     const { sqlLab } = state;
-    const schemas = sqlLab.schemasByDb[props.db_id];
+    const schemas = sqlLab.schemasByDb ? sqlLab.schemasByDb[props.db_id] : [];
     return { sqlLab, ...props, schemas };
 }
 
