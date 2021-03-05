@@ -33,7 +33,7 @@ from sqlalchemy import Column, literal_column, types
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlalchemy.engine.result import RowProxy
-from sqlalchemy.engine.url import URL
+from sqlalchemy.engine.url import make_url, URL
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.expression import ColumnClause, Select
 
@@ -137,6 +137,28 @@ class PrestoEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-metho
         return version is not None and StrictVersion(version) >= StrictVersion("0.319")
 
     @classmethod
+    def update_impersonation_config(
+        cls, connect_args: Dict[str, Any], uri: str, username: Optional[str],
+    ) -> None:
+        """
+        Update a configuration dictionary
+        that can set the correct properties for impersonating users
+        :param connect_args: config to be updated
+        :param uri: URI string
+        :param impersonate_user: Flag indicating if impersonation is enabled
+        :param username: Effective username
+        :return: None
+        """
+        url = make_url(uri)
+        backend_name = url.get_backend_name()
+
+        # Must be Presto connection, enable impersonation, and set optional param
+        # auth=LDAP|KERBEROS
+        # Set principal_username=$effective_username
+        if backend_name == "presto" and username is not None:
+            connect_args["principal_username"] = username
+
+    @classmethod
     def get_table_names(
         cls, database: "Database", inspector: Inspector, schema: Optional[str]
     ) -> List[str]:
@@ -173,9 +195,9 @@ class PrestoEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-metho
 
         engine = cls.get_engine(database, schema=schema)
         with closing(engine.raw_connection()) as conn:
-            with closing(conn.cursor()) as cursor:
-                cursor.execute(sql, params)
-                results = cursor.fetchall()
+            cursor = conn.cursor()
+            cursor.execute(sql, params)
+            results = cursor.fetchall()
 
         return [row[0] for row in results]
 
@@ -353,8 +375,8 @@ class PrestoEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-metho
         (re.compile(r"^varbinary.*", re.IGNORECASE), types.VARBINARY()),
         (re.compile(r"^json.*", re.IGNORECASE), types.JSON()),
         (re.compile(r"^date.*", re.IGNORECASE), types.DATE()),
-        (re.compile(r"^time.*", re.IGNORECASE), types.Time()),
         (re.compile(r"^timestamp.*", re.IGNORECASE), types.TIMESTAMP()),
+        (re.compile(r"^time.*", re.IGNORECASE), types.Time()),
         (re.compile(r"^interval.*", re.IGNORECASE), Interval()),
         (re.compile(r"^array.*", re.IGNORECASE), Array()),
         (re.compile(r"^map.*", re.IGNORECASE), Map()),
@@ -758,18 +780,18 @@ class PrestoEngineSpec(BaseEngineSpec):  # pylint: disable=too-many-public-metho
 
         engine = cls.get_engine(database, schema)
         with closing(engine.raw_connection()) as conn:
-            with closing(conn.cursor()) as cursor:
-                sql = f"SHOW CREATE VIEW {schema}.{table}"
-                try:
-                    cls.execute(cursor, sql)
-                    polled = cursor.poll()
+            cursor = conn.cursor()
+            sql = f"SHOW CREATE VIEW {schema}.{table}"
+            try:
+                cls.execute(cursor, sql)
+                polled = cursor.poll()
 
-                    while polled:
-                        time.sleep(0.2)
-                        polled = cursor.poll()
-                except DatabaseError:  # not a VIEW
-                    return None
-                rows = cls.fetch_data(cursor, 1)
+                while polled:
+                    time.sleep(0.2)
+                    polled = cursor.poll()
+            except DatabaseError:  # not a VIEW
+                return None
+            rows = cls.fetch_data(cursor, 1)
         return rows[0][0]
 
     @classmethod

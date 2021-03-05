@@ -66,6 +66,7 @@ from superset.views import core as views
 from superset.views.database.views import DatabaseView
 
 from .base_tests import SupersetTestCase
+from tests.fixtures.world_bank_dashboard import load_world_bank_dashboard_with_slices
 
 logger = logging.getLogger(__name__)
 
@@ -544,7 +545,7 @@ class TestCore(SupersetTestCase):
         self.assertEqual(400, response.status_code)
         response_body = json.loads(response.data.decode("utf-8"))
         expected_body = {
-            "error": "SQLite database cannot be used as a data source for security reasons."
+            "error": "SQLiteDialect_pysqlite cannot be used as a data source for security reasons."
         }
         self.assertEqual(expected_body, response_body)
 
@@ -611,6 +612,7 @@ class TestCore(SupersetTestCase):
 
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
     def test_cache_logging(self):
+        self.login("admin")
         store_cache_keys = app.config["STORE_CACHE_KEYS_IN_METADATA_DB"]
         app.config["STORE_CACHE_KEYS_IN_METADATA_DB"] = True
         girls_slice = self.get_slice("Girls", db.session)
@@ -631,6 +633,28 @@ class TestCore(SupersetTestCase):
         )
         resp = self.client.post("/r/shortner/", data=dict(data=data))
         assert re.search(r"\/r\/[0-9]+", resp.data.decode("utf-8"))
+
+    def test_shortner_invalid(self):
+        self.login(username="admin")
+        invalid_urls = [
+            "hhttp://invalid.com",
+            "hhttps://invalid.com",
+            "www.invalid.com",
+        ]
+        for invalid_url in invalid_urls:
+            resp = self.client.post("/r/shortner/", data=dict(data=invalid_url))
+            assert resp.status_code == 400
+
+    def test_redirect_invalid(self):
+        model_url = models.Url(url="hhttp://invalid.com")
+        db.session.add(model_url)
+        db.session.commit()
+
+        self.login(username="admin")
+        response = self.client.get(f"/r/{model_url.id}")
+        assert response.headers["Location"] == "http://localhost/"
+        db.session.delete(model_url)
+        db.session.commit()
 
     @skipUnless(
         (is_feature_enabled("KV_STORE")), "skipping as /kv/ endpoints are not enabled"
@@ -784,6 +808,7 @@ class TestCore(SupersetTestCase):
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
     def test_slice_id_is_always_logged_correctly_on_web_request(self):
         # superset/explore case
+        self.login("admin")
         slc = db.session.query(Slice).filter_by(slice_name="Girls").one()
         qry = db.session.query(models.Log).filter_by(slice_id=slc.id)
         self.get_resp(slc.slice_url, {"form_data": json.dumps(slc.form_data)})
@@ -862,7 +887,7 @@ class TestCore(SupersetTestCase):
 
         self.assertEqual(
             data["errors"][0]["message"],
-            "The datasource associated with this chart no longer exists",
+            "The dataset associated with this chart no longer exists",
         )
 
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
@@ -887,6 +912,100 @@ class TestCore(SupersetTestCase):
 
         self.assertEqual(rv.status_code, 200)
         self.assertEqual(data["rowcount"], 2)
+
+    @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
+    def test_explore_json_dist_bar_order(self):
+        tbl_id = self.table_ids.get("birth_names")
+        form_data = {
+            "datasource": f"{tbl_id}__table",
+            "viz_type": "dist_bar",
+            "url_params": {},
+            "time_range_endpoints": ["inclusive", "exclusive"],
+            "granularity_sqla": "ds",
+            "time_range": 'DATEADD(DATETIME("2021-01-22T00:00:00"), -100, year) : 2021-01-22T00:00:00',
+            "metrics": [
+                {
+                    "expressionType": "SIMPLE",
+                    "column": {
+                        "id": 334,
+                        "column_name": "name",
+                        "verbose_name": "null",
+                        "description": "null",
+                        "expression": "",
+                        "filterable": True,
+                        "groupby": True,
+                        "is_dttm": False,
+                        "type": "VARCHAR(255)",
+                        "python_date_format": "null",
+                    },
+                    "aggregate": "COUNT",
+                    "sqlExpression": "null",
+                    "isNew": False,
+                    "hasCustomLabel": False,
+                    "label": "COUNT(name)",
+                    "optionName": "metric_xdzsijn42f9_khi4h3v3vci",
+                },
+                {
+                    "expressionType": "SIMPLE",
+                    "column": {
+                        "id": 332,
+                        "column_name": "ds",
+                        "verbose_name": "null",
+                        "description": "null",
+                        "expression": "",
+                        "filterable": True,
+                        "groupby": True,
+                        "is_dttm": True,
+                        "type": "TIMESTAMP WITHOUT TIME ZONE",
+                        "python_date_format": "null",
+                    },
+                    "aggregate": "COUNT",
+                    "sqlExpression": "null",
+                    "isNew": False,
+                    "hasCustomLabel": False,
+                    "label": "COUNT(ds)",
+                    "optionName": "metric_80g1qb9b6o7_ci5vquydcbe",
+                },
+            ],
+            "adhoc_filters": [],
+            "groupby": ["name"],
+            "columns": [],
+            "row_limit": 10,
+            "color_scheme": "supersetColors",
+            "label_colors": {},
+            "show_legend": True,
+            "y_axis_format": "SMART_NUMBER",
+            "bottom_margin": "auto",
+            "x_ticks_layout": "auto",
+        }
+
+        self.login(username="admin")
+        rv = self.client.post(
+            "/superset/explore_json/", data={"form_data": json.dumps(form_data)},
+        )
+        data = json.loads(rv.data.decode("utf-8"))
+
+        resp = self.run_sql(
+            """
+            SELECT count(name) AS count_name, count(ds) AS count_ds
+            FROM birth_names
+            WHERE ds >= '1921-01-22 00:00:00.000000' AND ds < '2021-01-22 00:00:00.000000'
+            GROUP BY name ORDER BY count_name DESC, count_ds DESC
+            LIMIT 10;
+            """,
+            client_id="client_id_1",
+            user_name="admin",
+        )
+        count_ds = []
+        count_name = []
+        for series in data["data"]:
+            if series["key"] == "COUNT(ds)":
+                count_ds = series["values"]
+            if series["key"] == "COUNT(name)":
+                count_name = series["values"]
+        for expected, actual_ds, actual_name in zip(resp["data"], count_ds, count_name):
+            assert expected["count_name"] == actual_name["y"]
+            assert expected["count_ds"] == actual_ds["y"]
 
     @pytest.mark.usefixtures("load_birth_names_dashboard_with_slices")
     @mock.patch.dict(
@@ -1223,6 +1342,7 @@ class TestCore(SupersetTestCase):
         {"FOO": lambda x: 1},
         clear=True,
     )
+    @pytest.mark.usefixtures("load_world_bank_dashboard_with_slices")
     def test_feature_flag_serialization(self):
         """
         Functions in feature flags don't break bootstrap data serialization.
@@ -1238,13 +1358,14 @@ class TestCore(SupersetTestCase):
             .replace("'", "&#39;")
             .replace('"', "&#34;")
         )
-
+        dash_id = db.session.query(Dashboard.id).first()[0]
+        tbl_id = self.table_ids.get("wb_health_population")
         urls = [
             "/superset/sqllab",
             "/superset/welcome",
-            "/superset/dashboard/1/",
+            f"/superset/dashboard/{dash_id}/",
             "/superset/profile/admin/",
-            "/superset/explore/table/1",
+            f"/superset/explore/table/{tbl_id}",
         ]
         for url in urls:
             data = self.get_resp(url)

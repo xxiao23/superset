@@ -32,13 +32,20 @@ from pyparsing import (
     Group,
     Optional as ppOptional,
     ParseException,
+    ParserElement,
     ParseResults,
     pyparsing_common,
     quotedString,
     Suppress,
 )
 
-from .core import memoized
+from superset.charts.commands.exceptions import (
+    TimeRangeParseFailError,
+    TimeRangeUnclearError,
+)
+from superset.utils.core import memoized
+
+ParserElement.enablePackrat()
 
 logger = logging.getLogger(__name__)
 
@@ -68,19 +75,22 @@ def parse_human_datetime(human_readable: str) -> datetime:
     >>> year_after_1 == year_after_2
     True
     """
+    x_periods = r"^\s*([0-9]+)\s+(second|minute|hour|day|week|month|quarter|year)s?\s*$"
+    if re.search(x_periods, human_readable, re.IGNORECASE):
+        raise TimeRangeUnclearError(human_readable)
     try:
         dttm = parse(human_readable)
-    except Exception:  # pylint: disable=broad-except
-        try:
-            cal = parsedatetime.Calendar()
-            parsed_dttm, parsed_flags = cal.parseDT(human_readable)
-            # when time is not extracted, we 'reset to midnight'
-            if parsed_flags & 2 == 0:
-                parsed_dttm = parsed_dttm.replace(hour=0, minute=0, second=0)
-            dttm = dttm_from_timetuple(parsed_dttm.utctimetuple())
-        except Exception as ex:
+    except (ValueError, OverflowError) as ex:
+        cal = parsedatetime.Calendar()
+        parsed_dttm, parsed_flags = cal.parseDT(human_readable)
+        # 0 == not parsed at all
+        if parsed_flags == 0:
             logger.exception(ex)
-            raise ValueError("Couldn't parse date string [{}]".format(human_readable))
+            raise TimeRangeParseFailError(human_readable)
+        # when time is not extracted, we 'reset to midnight'
+        if parsed_flags & 2 == 0:
+            parsed_dttm = parsed_dttm.replace(hour=0, minute=0, second=0)
+        dttm = dttm_from_timetuple(parsed_dttm.utctimetuple())
     return dttm
 
 
@@ -200,11 +210,11 @@ def get_since_until(
                 lambda unit: f"DATEADD(DATETIME('{_relative_start}'), -1, {unit})",
             ),
             (
-                r"^last\s+([0-9]+)\s+(second|minute|hour|day|week|month|year)s$",
+                r"^last\s+([0-9]+)\s+(second|minute|hour|day|week|month|year)s?$",
                 lambda delta, unit: f"DATEADD(DATETIME('{_relative_start}'), -{int(delta)}, {unit})",  # pylint: disable=line-too-long
             ),
             (
-                r"^next\s+([0-9]+)\s+(second|minute|hour|day|week|month|year)s$",
+                r"^next\s+([0-9]+)\s+(second|minute|hour|day|week|month|year)s?$",
                 lambda delta, unit: f"DATEADD(DATETIME('{_relative_end}'), {int(delta)}, {unit})",  # pylint: disable=line-too-long
             ),
             (
@@ -372,10 +382,12 @@ class EvalHolidayFunc:  # pylint: disable=too-few-public-methods
         searched_result = holiday_lookup.get_named(holiday)
         if len(searched_result) == 1:
             return dttm_from_timetuple(searched_result[0].timetuple())
-        raise ValueError(_("Unable to find such a holiday: [{}]").format(holiday))
+        raise ValueError(
+            _("Unable to find such a holiday: [%(holiday)s]", holiday=holiday)
+        )
 
 
-@memoized()
+@memoized
 def datetime_parser() -> ParseResults:  # pylint: disable=too-many-locals
     (  # pylint: disable=invalid-name
         DATETIME,
@@ -467,3 +479,13 @@ def datetime_eval(datetime_expression: Optional[str] = None) -> Optional[datetim
         except ParseException as error:
             raise ValueError(error)
     return None
+
+
+class DateRangeMigration:  # pylint: disable=too-few-public-methods
+    x_dateunit_in_since = (
+        r'"time_range":\s*"\s*[0-9]+\s+(day|week|month|quarter|year)s?\s*\s:\s'
+    )
+    x_dateunit_in_until = (
+        r'"time_range":\s*".*\s:\s*[0-9]+\s+(day|week|month|quarter|year)s?\s*"'
+    )
+    x_dateunit = r"^\s*[0-9]+\s+(day|week|month|quarter|year)s?\s*$"

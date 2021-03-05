@@ -24,11 +24,20 @@ import simplejson as json
 from flask_babel import gettext as _
 from pandas import DataFrame
 
-from superset import app, is_feature_enabled
+from superset import app, db
+from superset.connectors.base.models import BaseDatasource
+from superset.connectors.connector_registry import ConnectorRegistry
 from superset.exceptions import QueryObjectValidationError
 from superset.typing import Metric
 from superset.utils import pandas_postprocessing
-from superset.utils.core import DTTM_ALIAS, json_int_dttm_ser
+from superset.utils.core import (
+    ChartDataResultType,
+    DatasourceDict,
+    DTTM_ALIAS,
+    find_duplicates,
+    get_metric_names,
+    json_int_dttm_ser,
+)
 from superset.utils.date_parser import get_since_until, parse_human_timedelta
 from superset.views.utils import get_time_range_endpoints
 
@@ -81,9 +90,14 @@ class QueryObject:
     columns: List[str]
     orderby: List[List[str]]
     post_processing: List[Dict[str, Any]]
+    datasource: Optional[BaseDatasource]
+    result_type: Optional[ChartDataResultType]
+    is_rowcount: bool
 
     def __init__(
         self,
+        datasource: Optional[DatasourceDict] = None,
+        result_type: Optional[ChartDataResultType] = None,
         annotation_layers: Optional[List[Dict[str, Any]]] = None,
         applied_time_extras: Optional[Dict[str, str]] = None,
         granularity: Optional[str] = None,
@@ -102,12 +116,21 @@ class QueryObject:
         columns: Optional[List[str]] = None,
         orderby: Optional[List[List[str]]] = None,
         post_processing: Optional[List[Optional[Dict[str, Any]]]] = None,
+        is_rowcount: bool = False,
         **kwargs: Any,
     ):
+        self.is_rowcount = is_rowcount
+        self.datasource = None
+        if datasource:
+            self.datasource = ConnectorRegistry.get_datasource(
+                str(datasource["type"]), int(datasource["id"]), db.session
+            )
+        self.result_type = result_type
         annotation_layers = annotation_layers or []
         metrics = metrics or []
+        columns = columns or []
+        groupby = groupby or []
         extras = extras or {}
-        is_sip_38 = is_feature_enabled("SIP_38_VIZ_REARCHITECTURE")
         self.annotation_layers = [
             layer
             for layer in annotation_layers
@@ -126,19 +149,18 @@ class QueryObject:
             time_range=time_range,
             time_shift=time_shift,
         )
-        # is_timeseries is True if time column is in groupby
+        # is_timeseries is True if time column is in either columns or groupby
+        # (both are dimensions)
         self.is_timeseries = (
             is_timeseries
             if is_timeseries is not None
-            else (DTTM_ALIAS in groupby if groupby else False)
+            else DTTM_ALIAS in columns + groupby
         )
         self.time_range = time_range
         self.time_shift = parse_human_timedelta(time_shift)
         self.post_processing = [
             post_proc for post_proc in post_processing or [] if post_proc
         ]
-        if not is_sip_38:
-            self.groupby = groupby or []
 
         # Support metric reference/definition in the format of
         #   1. 'metric_name'   - name of predefined metric
@@ -151,7 +173,7 @@ class QueryObject:
             for metric in metrics
         ]
 
-        self.row_limit = row_limit or config["ROW_LIMIT"]
+        self.row_limit = config["ROW_LIMIT"] if row_limit is None else row_limit
         self.row_offset = row_offset or 0
         self.filter = filters or []
         self.timeseries_limit = timeseries_limit
@@ -159,17 +181,13 @@ class QueryObject:
         self.order_desc = order_desc
         self.extras = extras
 
-        if config["SIP_15_ENABLED"] and "time_range_endpoints" not in self.extras:
-            self.extras["time_range_endpoints"] = get_time_range_endpoints(form_data={})
-
-        self.columns = columns or []
-        if is_sip_38 and groupby:
-            self.columns += groupby
-            logger.warning(
-                "The field `groupby` is deprecated. Viz plugins should "
-                "pass all selectables via the `columns` field"
+        if config["SIP_15_ENABLED"]:
+            self.extras["time_range_endpoints"] = get_time_range_endpoints(
+                form_data=self.extras
             )
 
+        self.columns = columns
+        self.groupby = groupby or []
         self.orderby = orderby or []
 
         # rename deprecated fields
@@ -212,11 +230,43 @@ class QueryObject:
                         )
                     self.extras[field.new_name] = value
 
+    @property
+    def metric_names(self) -> List[str]:
+        """Return metrics names (labels), coerce adhoc metrics to strings."""
+        return get_metric_names(self.metrics)
+
+    @property
+    def column_names(self) -> List[str]:
+        """Return column names (labels). Reserved for future adhoc calculated
+        columns."""
+        return self.columns
+
+    def validate(
+        self, raise_exceptions: Optional[bool] = True
+    ) -> Optional[QueryObjectValidationError]:
+        """Validate query object"""
+        error: Optional[QueryObjectValidationError] = None
+        all_labels = self.metric_names + self.column_names
+        if len(set(all_labels)) < len(all_labels):
+            dup_labels = find_duplicates(all_labels)
+            error = QueryObjectValidationError(
+                _(
+                    "Duplicate column/metric labels: %(labels)s. Please make "
+                    "sure all columns and metrics have a unique label.",
+                    labels=", ".join(f'"{x}"' for x in dup_labels),
+                )
+            )
+        if error and raise_exceptions:
+            raise error
+        return error
+
     def to_dict(self) -> Dict[str, Any]:
         query_object_dict = {
             "granularity": self.granularity,
+            "groupby": self.groupby,
             "from_dttm": self.from_dttm,
             "to_dttm": self.to_dttm,
+            "is_rowcount": self.is_rowcount,
             "is_timeseries": self.is_timeseries,
             "metrics": self.metrics,
             "row_limit": self.row_limit,
@@ -229,9 +279,6 @@ class QueryObject:
             "columns": self.columns,
             "orderby": self.orderby,
         }
-        if not is_feature_enabled("SIP_38_VIZ_REARCHITECTURE"):
-            query_object_dict["groupby"] = self.groupby
-
         return query_object_dict
 
     def cache_key(self, **extra: Any) -> str:
@@ -244,6 +291,10 @@ class QueryObject:
         """
         cache_dict = self.to_dict()
         cache_dict.update(extra)
+        if self.datasource:
+            cache_dict["datasource"] = self.datasource.uid
+        if self.result_type:
+            cache_dict["result_type"] = self.result_type
 
         for k in ["from_dttm", "to_dttm"]:
             del cache_dict[k]

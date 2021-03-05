@@ -24,7 +24,8 @@ import {
   CheckCircleFilled,
   ExclamationCircleFilled,
 } from '@ant-design/icons';
-import { Collapse, Popover } from 'src/common/components/index';
+import { Popover } from 'src/common/components/index';
+import Collapse from 'src/common/components/Collapse';
 import { Global } from '@emotion/core';
 import {
   Indent,
@@ -51,7 +52,7 @@ const Indicator = ({
       <ItemIcon>
         <SearchOutlined />
       </ItemIcon>
-      {name.toUpperCase()}
+      {name}
       {value.length ? ': ' : ''}
     </Title>
     <FilterValue>{value.length ? value.join(', ') : ''}</FilterValue>
@@ -102,6 +103,9 @@ const DetailsPanelPopover = ({
       setActivePanels(panels);
     }
   }
+
+  const indicatorKey = (indicator: Indicator): string =>
+    `${indicator.column} - ${indicator.name}`;
 
   const content = (
     <Panel>
@@ -170,10 +174,10 @@ const DetailsPanelPopover = ({
                 </Title>
               }
             >
-              <Indent>
+              <Indent css={{ paddingBottom: theme.gridUnit * 3 }}>
                 {appliedIndicators.map(indicator => (
                   <Indicator
-                    key={indicator.column}
+                    key={indicatorKey(indicator)}
                     indicator={indicator}
                     onClick={onHighlightFilterSource}
                   />
@@ -194,10 +198,10 @@ const DetailsPanelPopover = ({
                 </Title>
               }
             >
-              <Indent>
+              <Indent css={{ paddingBottom: theme.gridUnit * 3 }}>
                 {incompatibleIndicators.map(indicator => (
                   <Indicator
-                    key={indicator.column}
+                    key={indicatorKey(indicator)}
                     indicator={indicator}
                     onClick={onHighlightFilterSource}
                   />
@@ -216,10 +220,10 @@ const DetailsPanelPopover = ({
               }
               disabled={!unsetIndicators.length}
             >
-              <Indent>
+              <Indent css={{ paddingBottom: theme.gridUnit * 3 }}>
                 {unsetIndicators.map(indicator => (
                   <Indicator
-                    key={indicator.column}
+                    key={indicatorKey(indicator)}
                     indicator={indicator}
                     onClick={onHighlightFilterSource}
                   />

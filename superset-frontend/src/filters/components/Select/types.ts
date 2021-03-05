@@ -19,34 +19,38 @@
 import {
   QueryFormData,
   DataRecord,
-  SetExtraFormDataHook,
+  SetDataMaskHook,
+  Behavior,
 } from '@superset-ui/core';
-import { AntdPluginFilterStylesProps } from '../types';
+import { RefObject } from 'react';
+import { PluginFilterStylesProps } from '../types';
 
-interface AntdPluginFilterSelectCustomizeProps {
-  defaultValues?: (string | number)[];
+interface PluginFilterSelectCustomizeProps {
+  defaultValue?: (string | number)[] | null;
+  currentValue?: (string | number)[] | null;
   enableEmptyFilter: boolean;
   fetchPredicate?: string;
   inverseSelection: boolean;
   multiSelect: boolean;
-  showSearch: boolean;
+  inputRef?: RefObject<HTMLInputElement>;
 }
 
-export type AntdPluginFilterSelectQueryFormData = QueryFormData &
-  AntdPluginFilterStylesProps &
-  AntdPluginFilterSelectCustomizeProps;
+export type PluginFilterSelectQueryFormData = QueryFormData &
+  PluginFilterStylesProps &
+  PluginFilterSelectCustomizeProps;
 
-export type AntdPluginFilterSelectProps = AntdPluginFilterStylesProps & {
+export type PluginFilterSelectProps = PluginFilterStylesProps & {
   data: DataRecord[];
-  setExtraFormData: SetExtraFormDataHook;
-  formData: AntdPluginFilterSelectQueryFormData;
+  setDataMask: SetDataMaskHook;
+  behaviors: Behavior[];
+  formData: PluginFilterSelectQueryFormData;
 };
 
-export const DEFAULT_FORM_DATA: AntdPluginFilterSelectCustomizeProps = {
-  defaultValues: [],
+export const DEFAULT_FORM_DATA: PluginFilterSelectCustomizeProps = {
+  defaultValue: null,
+  currentValue: null,
   enableEmptyFilter: false,
   fetchPredicate: '',
   inverseSelection: false,
-  multiSelect: true,
-  showSearch: true,
+  multiSelect: false,
 };

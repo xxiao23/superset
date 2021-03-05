@@ -21,7 +21,6 @@ import json
 from io import BytesIO
 from unittest import mock
 from zipfile import is_zipfile, ZipFile
-from tests.fixtures.birth_names_dashboard import load_birth_names_dashboard_with_slices
 
 import prison
 import pytest
@@ -35,8 +34,10 @@ from superset.models.core import Database
 from superset.models.reports import ReportSchedule, ReportScheduleType
 from superset.utils.core import get_example_database, get_main_database
 from tests.base_tests import SupersetTestCase
+from tests.fixtures.birth_names_dashboard import load_birth_names_dashboard_with_slices
 from tests.fixtures.certificates import ssl_certificate
 from tests.fixtures.energy_dashboard import load_energy_table_with_slice
+from tests.fixtures.world_bank_dashboard import load_world_bank_dashboard_with_slices
 from tests.fixtures.importexport import (
     database_config,
     dataset_config,
@@ -93,6 +94,28 @@ class TestDatabaseApi(SupersetTestCase):
             db.session.delete(database)
             db.session.commit()
 
+    @pytest.fixture()
+    def create_database_with_dataset(self):
+        with self.create_app().app_context():
+            example_db = get_example_database()
+            self._database = self.insert_database(
+                "database_with_dataset",
+                example_db.sqlalchemy_uri_decrypted,
+                expose_in_sqllab=True,
+            )
+            table = SqlaTable(
+                schema="main", table_name="ab_permission", database=self._database
+            )
+            db.session.add(table)
+            db.session.commit()
+            yield self._database
+
+            # rollback changes
+            db.session.delete(table)
+            db.session.delete(self._database)
+            db.session.commit()
+            self._database = None
+
     def create_database_import(self):
         buf = BytesIO()
         with ZipFile(buf, "w") as bundle:
@@ -136,7 +159,6 @@ class TestDatabaseApi(SupersetTestCase):
             "explore_database_id",
             "expose_in_sqllab",
             "force_ctas_schema",
-            "function_names",
             "id",
         ]
         self.assertGreater(response["count"], 0)
@@ -200,7 +222,7 @@ class TestDatabaseApi(SupersetTestCase):
         database_data = {
             "database_name": "test-create-database",
             "sqlalchemy_uri": example_db.sqlalchemy_uri_decrypted,
-            "server_cert": ssl_certificate,
+            "server_cert": None,
             "extra": json.dumps(extra),
         }
 
@@ -365,7 +387,7 @@ class TestDatabaseApi(SupersetTestCase):
         expected_response = {
             "message": {
                 "sqlalchemy_uri": [
-                    "SQLite database cannot be used as a data source "
+                    "SQLiteDialect_pysqlite cannot be used as a data source "
                     "for security reasons."
                 ]
             }
@@ -528,15 +550,13 @@ class TestDatabaseApi(SupersetTestCase):
         rv = self.delete_assert_metric(uri, "delete")
         self.assertEqual(rv.status_code, 404)
 
+    @pytest.mark.usefixtures("create_database_with_dataset")
     def test_delete_database_with_datasets(self):
         """
         Database API: Test delete fails because it has depending datasets
         """
-        database_id = (
-            db.session.query(Database).filter_by(database_name="examples").one()
-        ).id
         self.login(username="admin")
-        uri = f"api/v1/database/{database_id}"
+        uri = f"api/v1/database/{self._database.id}"
         rv = self.delete_assert_metric(uri, "delete")
         self.assertEqual(rv.status_code, 422)
 
@@ -588,7 +608,8 @@ class TestDatabaseApi(SupersetTestCase):
         assert rv.status_code == 200
         assert "can_read" in data["permissions"]
         assert "can_write" in data["permissions"]
-        assert len(data["permissions"]) == 2
+        assert "can_function_names" in data["permissions"]
+        assert len(data["permissions"]) == 3
 
     def test_get_invalid_database_table_metadata(self):
         """
@@ -761,7 +782,7 @@ class TestDatabaseApi(SupersetTestCase):
             "extra": json.dumps(extra),
             "impersonate_user": False,
             "sqlalchemy_uri": example_db.safe_sqlalchemy_uri(),
-            "server_cert": ssl_certificate,
+            "server_cert": None,
         }
         url = "api/v1/database/test_connection"
         rv = self.post_assert_metric(url, data, "test_connection")
@@ -837,7 +858,7 @@ class TestDatabaseApi(SupersetTestCase):
         expected_response = {
             "message": {
                 "sqlalchemy_uri": [
-                    "SQLite database cannot be used as a data source for security reasons."
+                    "SQLiteDialect_pysqlite cannot be used as a data source for security reasons."
                 ]
             }
         }
@@ -848,6 +869,7 @@ class TestDatabaseApi(SupersetTestCase):
     @pytest.mark.usefixtures(
         "load_unicode_dashboard_with_position",
         "load_energy_table_with_slice",
+        "load_world_bank_dashboard_with_slices",
         "load_birth_names_dashboard_with_slices",
     )
     def test_get_database_related_objects(self):
@@ -1123,3 +1145,20 @@ class TestDatabaseApi(SupersetTestCase):
 
         db.session.delete(database)
         db.session.commit()
+
+    @mock.patch("superset.db_engine_specs.base.BaseEngineSpec.get_function_names",)
+    def test_function_names(self, mock_get_function_names):
+        example_db = get_example_database()
+        if example_db.backend in {"hive", "presto"}:
+            return
+
+        mock_get_function_names.return_value = ["AVG", "MAX", "SUM"]
+
+        self.login(username="admin")
+        uri = "api/v1/database/1/function_names/"
+
+        rv = self.client.get(uri)
+        response = json.loads(rv.data.decode("utf-8"))
+
+        assert rv.status_code == 200
+        assert response == {"function_names": ["AVG", "MAX", "SUM"]}

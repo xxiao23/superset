@@ -18,10 +18,10 @@
  */
 export const nativeFiltersInfo = {
   filters: {
-    DefaultID1: {
-      id: 'DefaultID1',
+    DefaultsID: {
+      id: 'DefaultsID',
       name: 'test',
-      type: 'text',
+      type: 'filter_select',
       targets: [
         {
           datasetId: 0,
@@ -42,9 +42,13 @@ export const nativeFiltersInfo = {
     },
   },
   filtersState: {
-    DefaultsID: {
-      id: 'DefaultId',
-      selectedValues: [],
+    nativeFilters: {
+      DefaultsID: {
+        id: 'DefaultId',
+        currentState: {
+          value: [],
+        },
+      },
     },
   },
 };

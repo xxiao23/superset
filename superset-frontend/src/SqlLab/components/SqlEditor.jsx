@@ -30,9 +30,6 @@ import debounce from 'lodash/debounce';
 import throttle from 'lodash/throttle';
 import StyledModal from 'src/common/components/Modal';
 import Mousetrap from 'mousetrap';
-
-import { Tooltip } from 'src/common/components/Tooltip';
-import Label from 'src/components/Label';
 import Button from 'src/components/Button';
 import Timer from 'src/components/Timer';
 import {
@@ -43,6 +40,7 @@ import {
   Input,
 } from 'src/common/components';
 import Icon from 'src/components/Icon';
+import { detectOS } from 'src/utils/common';
 import {
   addQueryEditor,
   CtasEnum,
@@ -70,7 +68,7 @@ import ShareSqlLabQuery from './ShareSqlLabQuery';
 import SqlEditorLeftBar from './SqlEditorLeftBar';
 import AceEditorWrapper from './AceEditorWrapper';
 import {
-  STATE_BSSTYLE_MAP,
+  STATE_TYPE_MAP,
   SQL_EDITOR_GUTTER_HEIGHT,
   SQL_EDITOR_GUTTER_MARGIN,
   SQL_TOOLBAR_HEIGHT,
@@ -278,6 +276,8 @@ class SqlEditor extends React.PureComponent {
   }
 
   getHotkeyConfig() {
+    // Get the user's OS
+    const userOS = detectOS();
     return [
       {
         name: 'runQuery1',
@@ -301,12 +301,12 @@ class SqlEditor extends React.PureComponent {
       },
       {
         name: 'newTab',
-        key: 'ctrl+t',
+        key: userOS === 'Windows' ? 'ctrl+q' : 'ctrl+t',
         descr: t('New tab'),
         func: () => {
           this.props.addQueryEditor({
             ...this.props.queryEditor,
-            title: t('Untitled Query'),
+            title: t('Untitled query'),
             sql: '',
           });
         },
@@ -471,9 +471,7 @@ class SqlEditor extends React.PureComponent {
             sql={this.props.queryEditor.sql}
             schemas={this.props.queryEditor.schemaOptions}
             tables={this.props.queryEditor.tableOptions}
-            functionNames={
-              this.props.database ? this.props.database.function_names : []
-            }
+            functionNames={this.props.queryEditor.functionNames}
             extendedTables={this.props.tables}
             height={`${aceEditorHeight}px`}
             hotkeys={hotkeys}
@@ -502,7 +500,7 @@ class SqlEditor extends React.PureComponent {
       <Menu onClick={this.handleMenuClick} style={{ width: 176 }}>
         <Menu.Item style={{ display: 'flex', justifyContent: 'space-between' }}>
           {' '}
-          <span>Autocomplete</span>{' '}
+          <span>{t('Autocomplete')}</span>{' '}
           <Switch
             checked={this.state.autocompleteEnabled}
             onChange={this.handleToggleAutocompleteEnabled}
@@ -539,10 +537,17 @@ class SqlEditor extends React.PureComponent {
   }
 
   renderQueryLimit() {
-    const menuDropdown = (
+    // Adding SQL_MAX_ROW value to dropdown
+    const { maxRow } = this.props;
+    LIMIT_DROPDOWN.push(maxRow);
+
+    return (
       <AntdMenu>
-        {LIMIT_DROPDOWN.map(limit => (
-          <AntdMenu.Item onClick={() => this.setQueryLimit(limit)}>
+        {[...new Set(LIMIT_DROPDOWN)].map(limit => (
+          <AntdMenu.Item
+            key={`${limit}`}
+            onClick={() => this.setQueryLimit(limit)}
+          >
             {/* // eslint-disable-line no-use-before-define */}
             <a role="button" styling="link">
               {this.convertToNumWithSpaces(limit)}
@@ -551,29 +556,10 @@ class SqlEditor extends React.PureComponent {
         ))}
       </AntdMenu>
     );
-
-    return menuDropdown;
   }
 
   renderEditorBottomBar() {
     const { queryEditor: qe } = this.props;
-    let limitWarning = null;
-    if (this.props.latestQuery?.results?.displayLimitReached) {
-      limitWarning = (
-        <Tooltip
-          id="tooltip"
-          placement="left"
-          title={t(
-            `It appears that the number of rows in the query results displayed
-           was limited on the server side to
-           the %s limit.`,
-            this.props.latestQuery.rows,
-          )}
-        >
-          <Label bsStyle="warning">LIMIT</Label>
-        </Tooltip>
-      );
-    }
 
     const { allow_ctas: allowCTAS, allow_cvas: allowCVAS } =
       this.props.database || {};
@@ -644,7 +630,6 @@ class SqlEditor extends React.PureComponent {
                   />
                 </span>
               )}
-            {limitWarning}
             <span>
               <LimitSelectStyled>
                 <Dropdown overlay={this.renderQueryLimit()} trigger="click">
@@ -665,7 +650,7 @@ class SqlEditor extends React.PureComponent {
               <Timer
                 startTime={this.props.latestQuery.startDttm}
                 endTime={this.props.latestQuery.endDttm}
-                state={STATE_BSSTYLE_MAP[this.props.latestQuery.state]}
+                state={STATE_TYPE_MAP[this.props.latestQuery.state]}
                 isRunning={this.props.latestQuery.state === 'running'}
               />
             )}
@@ -684,7 +669,6 @@ class SqlEditor extends React.PureComponent {
           <span>
             <ShareSqlLabQuery queryEditor={qe} />
           </span>
-          {limitWarning}
           <Dropdown overlay={this.renderDropdown()} trigger="click">
             <Icon name="more-horiz" />
           </Dropdown>
@@ -696,13 +680,13 @@ class SqlEditor extends React.PureComponent {
   render() {
     const createViewModalTitle =
       this.state.createAs === CtasEnum.VIEW
-        ? 'Create View As'
-        : 'Create Table As';
+        ? 'CREATE VIEW AS'
+        : 'CREATE TABLE AS';
 
     const createModalPlaceHolder =
       this.state.createAs === CtasEnum.VIEW
-        ? 'Specify name to Create View AS schema in: public'
-        : 'Specify name to Create Table AS schema in: public';
+        ? 'Specify name to CREATE VIEW AS schema in: public'
+        : 'Specify name to CREATE TABLE AS schema in: public';
 
     return (
       <div ref={this.sqlEditorRef} className="SqlEditor">

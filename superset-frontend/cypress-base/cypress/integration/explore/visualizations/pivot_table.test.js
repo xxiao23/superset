@@ -28,7 +28,7 @@ describe('Visualization > Pivot Table', () => {
     adhoc_filters: [],
     groupby: ['name'],
     columns: ['state'],
-    row_limit: 50000,
+    row_limit: 5000,
     pandas_aggfunc: 'sum',
     pivot_margins: true,
     number_format: '.3s',
@@ -59,9 +59,8 @@ describe('Visualization > Pivot Table', () => {
   }
 
   beforeEach(() => {
-    cy.server();
     cy.login();
-    cy.route('POST', '/superset/explore_json/**').as('getJson');
+    cy.intercept('POST', '/superset/explore_json/**').as('getJson');
   });
 
   it('should work with single groupby', () => {

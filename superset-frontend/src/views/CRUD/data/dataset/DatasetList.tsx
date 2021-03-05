@@ -41,8 +41,8 @@ import SubMenu, {
 import { commonMenuData } from 'src/views/CRUD/data/common';
 import Owner from 'src/types/Owner';
 import withToasts from 'src/messageToasts/enhancers/withToasts';
-import TooltipWrapper from 'src/components/TooltipWrapper';
-import Icon from 'src/components/Icon';
+import { Tooltip } from 'src/common/components/Tooltip';
+import Icons from 'src/components/Icons';
 import FacePile from 'src/components/FacePile';
 import CertifiedIconWithTooltip from 'src/components/CertifiedIconWithTooltip';
 import ImportModelsModal from 'src/components/ImportModal/index';
@@ -70,6 +70,10 @@ const FlexRowContainer = styled.div`
   > svg {
     margin-right: ${({ theme }) => theme.gridUnit}px;
   }
+`;
+
+const Actions = styled.div`
+  color: ${({ theme }) => theme.colors.grayscale.base};
 `;
 
 type Dataset = {
@@ -199,22 +203,19 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
         }: any) => {
           if (kind === 'physical') {
             return (
-              <TooltipWrapper
-                label="physical-dataset"
-                tooltip={t('Physical Dataset')}
+              <Tooltip
+                id="physical-dataset-tooltip"
+                title={t('Physical dataset')}
               >
-                <Icon name="dataset-physical" />
-              </TooltipWrapper>
+                <Icons.DatasetPhysical />
+              </Tooltip>
             );
           }
 
           return (
-            <TooltipWrapper
-              label="virtual-dataset"
-              tooltip={t('Virtual Dataset')}
-            >
-              <Icon name="dataset-virtual" />
-            </TooltipWrapper>
+            <Tooltip id="virtual-dataset-tooltip" title={t('Virtual dataset')}>
+              <Icons.DatasetVirtual />
+            </Tooltip>
           );
         },
         accessor: 'kind_icon',
@@ -289,7 +290,7 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
             original: { changed_by_name: changedByName },
           },
         }: any) => changedByName,
-        Header: t('Modified By'),
+        Header: t('Modified by'),
         accessor: 'changed_by.first_name',
         size: 'xl',
       },
@@ -323,11 +324,11 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
             return null;
           }
           return (
-            <span className="actions">
+            <Actions className="actions">
               {canDelete && (
-                <TooltipWrapper
-                  label="delete-action"
-                  tooltip={t('Delete')}
+                <Tooltip
+                  id="delete-action-tooltip"
+                  title={t('Delete')}
                   placement="bottom"
                 >
                   <span
@@ -336,14 +337,14 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
                     className="action-button"
                     onClick={handleDelete}
                   >
-                    <Icon name="trash" />
+                    <Icons.Trash />
                   </span>
-                </TooltipWrapper>
+                </Tooltip>
               )}
               {canExport && (
-                <TooltipWrapper
-                  label="export-action"
-                  tooltip={t('Export')}
+                <Tooltip
+                  id="export-action-tooltip"
+                  title={t('Export')}
                   placement="bottom"
                 >
                   <span
@@ -352,14 +353,14 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
                     className="action-button"
                     onClick={handleExport}
                   >
-                    <Icon name="share" />
+                    <Icons.Share />
                   </span>
-                </TooltipWrapper>
+                </Tooltip>
               )}
               {canEdit && (
-                <TooltipWrapper
-                  label="edit-action"
-                  tooltip={t('Edit')}
+                <Tooltip
+                  id="edit-action-tooltip"
+                  title={t('Edit')}
                   placement="bottom"
                 >
                   <span
@@ -368,11 +369,11 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
                     className="action-button"
                     onClick={handleEdit}
                   >
-                    <Icon name="edit-alt" />
+                    <Icons.EditAlt />
                   </span>
-                </TooltipWrapper>
+                </Tooltip>
               )}
-            </span>
+            </Actions>
           );
         },
         Header: t('Actions'),
@@ -465,7 +466,7 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
 
   if (canDelete || canExport) {
     buttonArr.push({
-      name: t('Bulk Select'),
+      name: t('Bulk select'),
       onClick: toggleBulkSelect,
       buttonStyle: 'secondary',
     });
@@ -485,7 +486,7 @@ const DatasetList: FunctionComponent<DatasetListProps> = ({
 
   if (isFeatureEnabled(FeatureFlag.VERSIONED_EXPORT)) {
     buttonArr.push({
-      name: <Icon name="import" />,
+      name: <Icons.Import />,
       buttonStyle: 'link',
       onClick: openDatasetImportModal,
     });

@@ -104,6 +104,7 @@ module.exports = {
         'no-mixed-operators': 0,
         'no-multi-assign': 0,
         'no-multi-spaces': 0,
+        'no-nested-ternary': 0,
         'no-prototype-builtins': 0,
         'no-restricted-properties': 0,
         'no-restricted-imports': [
@@ -167,11 +168,20 @@ module.exports = {
         'src/**/*.test.js',
         'src/**/*.test.jsx',
       ],
-      plugins: ['jest', 'jest-dom', 'no-only-tests'],
+      plugins: ['jest', 'jest-dom', 'no-only-tests', 'testing-library'],
       env: {
         'jest/globals': true,
       },
-      extends: ['plugin:jest/recommended', 'plugin:testing-library/react'],
+      settings: {
+        jest: {
+          version: 'detect',
+        },
+      },
+      extends: [
+        'plugin:jest/recommended',
+        'plugin:jest-dom/recommended',
+        'plugin:testing-library/react',
+      ],
       rules: {
         'import/no-extraneous-dependencies': [
           'error',
@@ -179,6 +189,7 @@ module.exports = {
         ],
         'jest/consistent-test-it': 'error',
         'no-only-tests/no-only-tests': 'error',
+        '@typescript-eslint/no-non-null-assertion': 0,
       },
     },
   ],
@@ -216,6 +227,7 @@ module.exports = {
     'no-mixed-operators': 0,
     'no-multi-assign': 0,
     'no-multi-spaces': 0,
+    'no-nested-ternary': 0,
     'no-prototype-builtins': 0,
     'no-restricted-properties': 0,
     'no-restricted-imports': [

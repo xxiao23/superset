@@ -34,18 +34,17 @@ import {
 } from './DatePicker';
 import Badge from './Badge';
 import ProgressBar from './ProgressBar';
-import Collapse from './Collapse';
 import { CronPicker, CronError } from './CronPicker';
 
 export default {
-  title: 'Common Components',
+  title: 'Common components',
   decorators: [withKnobs],
 };
 
 export const StyledModal = () => (
   <Modal
     disablePrimaryButton={false}
-    onHandledPrimaryAction={action('Primary Action')}
+    onHandledPrimaryAction={action('Primary action')}
     primaryButtonName="Danger"
     primaryButtonType="danger"
     show
@@ -65,14 +64,14 @@ export const StyledTabs = () => (
     <Tabs.TabPane
       tab="Tab 1"
       key="1"
-      disabled={boolean('Tab 1 Disabled', false)}
+      disabled={boolean('Tab 1 disabled', false)}
     >
       Tab 1 Content!
     </Tabs.TabPane>
     <Tabs.TabPane
       tab="Tab 2"
       key="2"
-      disabled={boolean('Tab 2 Disabled', false)}
+      disabled={boolean('Tab 2 disabled', false)}
     >
       Tab 2 Content!
     </Tabs.TabPane>
@@ -88,14 +87,14 @@ export const StyledEditableTabs = () => (
     <Tabs.TabPane
       tab="Tab 1"
       key="1"
-      disabled={boolean('Tab 1 Disabled', false)}
+      disabled={boolean('Tab 1 disabled', false)}
     >
       Tab 1 Content!
     </Tabs.TabPane>
     <Tabs.TabPane
       tab="Tab 2"
       key="2"
-      disabled={boolean('Tab 2 Disabled', false)}
+      disabled={boolean('Tab 2 disabled', false)}
     >
       Tab 2 Content!
     </Tabs.TabPane>
@@ -123,7 +122,7 @@ export const TabsWithDropdownMenu = () => (
         </>
       }
       key="1"
-      disabled={boolean('Tab 1 Disabled', false)}
+      disabled={boolean('Tab 1 disabled', false)}
     >
       Tab 1 Content!
     </Tabs.TabPane>
@@ -264,64 +263,6 @@ export const BadgeSuccess = () => <Badge status="success" text="Success" />;
 export const BadgeError = () => <Badge status="error" text="Error" />;
 export const BadgeSmall = () => <Badge count={100} size="small" />;
 
-export const CollapseDefault = () => (
-  <Collapse defaultActiveKey={['1']}>
-    <Collapse.Panel header="Hi! I am a header" key="1">
-      Hi! I am a sample content
-    </Collapse.Panel>
-    <Collapse.Panel header="Hi! I am another header" key="2">
-      Hi! I am another sample content
-    </Collapse.Panel>
-  </Collapse>
-);
-export const CollapseGhost = () => (
-  <Collapse defaultActiveKey={['1']} ghost>
-    <Collapse.Panel header="Hi! I am a header" key="1">
-      Hi! I am a sample content
-    </Collapse.Panel>
-    <Collapse.Panel header="Hi! I am another header" key="2">
-      Hi! I am another sample content
-    </Collapse.Panel>
-  </Collapse>
-);
-export const CollapseBold = () => (
-  <Collapse defaultActiveKey={['1']} bold>
-    <Collapse.Panel header="Hi! I am a header" key="1">
-      Hi! I am a sample content
-    </Collapse.Panel>
-    <Collapse.Panel header="Hi! I am another header" key="2">
-      Hi! I am another sample content
-    </Collapse.Panel>
-  </Collapse>
-);
-export const CollapseBigger = () => (
-  <Collapse defaultActiveKey={['1']} bigger>
-    <Collapse.Panel header="Hi! I am a header" key="1">
-      Hi! I am a sample content
-    </Collapse.Panel>
-    <Collapse.Panel header="Hi! I am another header" key="2">
-      Hi! I am another sample content
-    </Collapse.Panel>
-  </Collapse>
-);
-export const CollapseTextLight = () => (
-  <Collapse defaultActiveKey={['1']} light>
-    <Collapse.Panel
-      header="Hi! I am a header"
-      key="1"
-      style={{ background: '#BBB' }}
-    >
-      Hi! I am a sample content
-    </Collapse.Panel>
-    <Collapse.Panel
-      header="Hi! I am another header"
-      key="2"
-      style={{ background: '#BBB' }}
-    >
-      Hi! I am another sample content
-    </Collapse.Panel>
-  </Collapse>
-);
 export function StyledCronPicker() {
   // @ts-ignore
   const inputRef = useRef<Input>(null);

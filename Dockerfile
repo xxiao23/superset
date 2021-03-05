@@ -45,7 +45,10 @@ RUN cd /app \
 ######################################################################
 # Node stage to deal with static asset construction
 ######################################################################
-FROM node:12 AS superset-node
+FROM node:14 AS superset-node
+
+ARG NPM_VER=7
+RUN npm install -g npm@${NPM_VER}
 
 ARG NPM_BUILD_CMD="build"
 ENV BUILD_CMD=${NPM_BUILD_CMD}
@@ -128,3 +131,17 @@ RUN cd /app \
     && pip install --no-cache -r requirements/docker.txt \
     && pip install --no-cache -r requirements/requirements-local.txt || true
 USER superset
+
+
+######################################################################
+# CI image...
+######################################################################
+FROM lean AS ci
+
+COPY --chown=superset ./docker/docker-bootstrap.sh /app/docker/
+COPY --chown=superset ./docker/docker-init.sh /app/docker/
+COPY --chown=superset ./docker/docker-ci.sh /app/docker/
+
+RUN chmod a+x /app/docker/*.sh
+
+CMD /app/docker/docker-ci.sh

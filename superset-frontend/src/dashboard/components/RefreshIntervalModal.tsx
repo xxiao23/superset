@@ -19,7 +19,7 @@
 import React, { RefObject } from 'react';
 import Select from 'src/components/Select';
 import { t, styled } from '@superset-ui/core';
-import { Alert } from 'react-bootstrap';
+import Alert from 'src/components/Alert';
 import Button from 'src/components/Button';
 
 import ModalTrigger from 'src/components/ModalTrigger';
@@ -112,7 +112,7 @@ class RefreshIntervalModal extends React.PureComponent<
       <StyledModalTrigger
         ref={this.modalRef}
         triggerNode={this.props.triggerNode}
-        modalTitle={t('Refresh Interval')}
+        modalTitle={t('Refresh interval')}
         modalBody={
           <div>
             <FormLabel>{t('Refresh frequency')}</FormLabel>
@@ -120,24 +120,34 @@ class RefreshIntervalModal extends React.PureComponent<
               options={options}
               value={{ value: refreshFrequency }}
               onChange={this.handleFrequencyChange}
+              forceOverflow
             />
             {showRefreshWarning && (
               <RefreshWarningContainer>
-                <Alert bsStyle="warning">
-                  <div>{refreshWarning}</div>
-                  <br />
-                  <strong>{t('Are you sure you want to proceed?')}</strong>
-                </Alert>
+                <Alert
+                  type="warning"
+                  message={
+                    <>
+                      <div>{refreshWarning}</div>
+                      <br />
+                      <strong>{t('Are you sure you want to proceed?')}</strong>
+                    </>
+                  }
+                />
               </RefreshWarningContainer>
             )}
           </div>
         }
         modalFooter={
           <>
-            <Button buttonStyle="primary" buttonSize="sm" onClick={this.onSave}>
+            <Button
+              buttonStyle="primary"
+              buttonSize="small"
+              onClick={this.onSave}
+            >
               {editMode ? t('Save') : t('Save for this session')}
             </Button>
-            <Button onClick={this.onCancel} buttonSize="sm">
+            <Button onClick={this.onCancel} buttonSize="small">
               {t('Cancel')}
             </Button>
           </>

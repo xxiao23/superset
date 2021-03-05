@@ -18,7 +18,7 @@
  */
 import React, { useMemo } from 'react';
 import PropTypes from 'prop-types';
-import { Alert } from 'react-bootstrap';
+import Alert from 'src/components/Alert';
 import { t } from '@superset-ui/core';
 
 import TableView from 'src/components/TableView';
@@ -61,9 +61,11 @@ const EstimateQueryCostButton = props => {
   const renderModalBody = () => {
     if (props.queryCostEstimate.error !== null) {
       return (
-        <Alert key="query-estimate-error" bsStyle="danger">
-          {props.queryCostEstimate.error}
-        </Alert>
+        <Alert
+          key="query-estimate-error"
+          type="error"
+          message={props.queryCostEstimate.error}
+        />
       );
     }
     if (props.queryCostEstimate.completed) {
@@ -82,12 +84,12 @@ const EstimateQueryCostButton = props => {
 
   const { disabled, selectedText, tooltip } = props;
   const btnText = selectedText
-    ? t('Estimate Selected Query Cost')
-    : t('Estimate Cost');
+    ? t('Estimate selected query cost')
+    : t('Estimate cost');
   return (
     <span className="EstimateQueryCostButton">
       <ModalTrigger
-        modalTitle={t('Cost Estimate')}
+        modalTitle={t('Cost estimate')}
         modalBody={renderModalBody()}
         triggerNode={
           <Button

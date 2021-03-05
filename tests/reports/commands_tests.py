@@ -17,10 +17,11 @@
 import json
 from datetime import datetime, timedelta
 from typing import List, Optional
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 import pytest
 from contextlib2 import contextmanager
+from flask_sqlalchemy import BaseQuery
 from freezegun import freeze_time
 from sqlalchemy.sql import func
 
@@ -49,16 +50,45 @@ from superset.reports.commands.exceptions import (
 )
 from superset.reports.commands.execute import AsyncExecuteReportScheduleCommand
 from superset.utils.core import get_example_database
+from tests.fixtures.birth_names_dashboard import load_birth_names_dashboard_with_slices
+from tests.fixtures.world_bank_dashboard import (
+    load_world_bank_dashboard_with_slices_module_scope,
+)
 from tests.reports.utils import insert_report_schedule
 from tests.test_app import app
 from tests.utils import read_fixture
 
+pytestmark = pytest.mark.usefixtures(
+    "load_world_bank_dashboard_with_slices_module_scope"
+)
 
-def get_target_from_report_schedule(report_schedule) -> List[str]:
+
+def get_target_from_report_schedule(report_schedule: ReportSchedule) -> List[str]:
     return [
         json.loads(recipient.recipient_config_json)["target"]
         for recipient in report_schedule.recipients
     ]
+
+
+def get_error_logs_query(report_schedule: ReportSchedule) -> BaseQuery:
+    return (
+        db.session.query(ReportExecutionLog)
+        .filter(
+            ReportExecutionLog.report_schedule == report_schedule,
+            ReportExecutionLog.state == ReportState.ERROR,
+        )
+        .order_by(ReportExecutionLog.end_dttm.desc())
+    )
+
+
+def get_notification_error_sent_count(report_schedule: ReportSchedule) -> int:
+    logs = get_error_logs_query(report_schedule).all()
+    notification_sent_logs = [
+        log.error_message
+        for log in logs
+        if log.error_message == "Notification sent with error"
+    ]
+    return len(notification_sent_logs)
 
 
 def assert_log(state: str, error_message: Optional[str] = None):
@@ -69,7 +99,11 @@ def assert_log(state: str, error_message: Optional[str] = None):
         assert logs[0].error_message == error_message
         assert logs[0].state == state
         return
-    assert len(logs) == 2
+    # On error we send an email
+    if state == ReportState.ERROR:
+        assert len(logs) == 3
+    else:
+        assert len(logs) == 2
     log_states = [log.state for log in logs]
     assert ReportState.WORKING in log_states
     assert state in log_states
@@ -86,6 +120,7 @@ def create_report_notification(
     report_type: Optional[str] = None,
     validator_type: Optional[str] = None,
     validator_config_json: Optional[str] = None,
+    grace_period: Optional[int] = None,
 ) -> ReportSchedule:
     report_type = report_type or ReportScheduleType.REPORT
     target = email_target or slack_channel
@@ -113,6 +148,7 @@ def create_report_notification(
         recipients=[recipient],
         validator_type=validator_type,
         validator_config_json=validator_config_json,
+        grace_period=grace_period,
     )
     return report_schedule
 
@@ -127,6 +163,22 @@ def cleanup_report_schedule(report_schedule: ReportSchedule) -> None:
 
     db.session.delete(report_schedule)
     db.session.commit()
+
+
+@contextmanager
+def create_test_table_context(database: Database):
+    database.get_sqla_engine().execute(
+        "CREATE TABLE test_table AS SELECT 1 as first, 2 as second"
+    )
+    database.get_sqla_engine().execute(
+        "INSERT INTO test_table (first, second) VALUES (1, 2)"
+    )
+    database.get_sqla_engine().execute(
+        "INSERT INTO test_table (first, second) VALUES (3, 4)"
+    )
+
+    yield db.session
+    database.get_sqla_engine().execute("DROP TABLE test_table")
 
 
 @pytest.yield_fixture()
@@ -233,7 +285,7 @@ def create_alert_slack_chart_grace():
 
 
 @pytest.yield_fixture(
-    params=["alert1", "alert2", "alert3", "alert4", "alert5", "alert6", "alert7"]
+    params=["alert1", "alert2", "alert3", "alert4", "alert5", "alert6", "alert7",]
 )
 def create_alert_email_chart(request):
     param_config = {
@@ -276,39 +328,36 @@ def create_alert_email_chart(request):
     with app.app_context():
         chart = db.session.query(Slice).first()
         example_database = get_example_database()
+        with create_test_table_context(example_database):
 
-        report_schedule = create_report_notification(
-            email_target="target@email.com",
-            chart=chart,
-            report_type=ReportScheduleType.ALERT,
-            database=example_database,
-            sql=param_config[request.param]["sql"],
-            validator_type=param_config[request.param]["validator_type"],
-            validator_config_json=param_config[request.param]["validator_config_json"],
-        )
-        yield report_schedule
+            report_schedule = create_report_notification(
+                email_target="target@email.com",
+                chart=chart,
+                report_type=ReportScheduleType.ALERT,
+                database=example_database,
+                sql=param_config[request.param]["sql"],
+                validator_type=param_config[request.param]["validator_type"],
+                validator_config_json=param_config[request.param][
+                    "validator_config_json"
+                ],
+            )
+            yield report_schedule
 
-        cleanup_report_schedule(report_schedule)
-
-
-@contextmanager
-def create_test_table_context(database: Database):
-    database.get_sqla_engine().execute(
-        "CREATE TABLE test_table AS SELECT 1 as first, 2 as second"
-    )
-    database.get_sqla_engine().execute(
-        "INSERT INTO test_table (first, second) VALUES (1, 2)"
-    )
-    database.get_sqla_engine().execute(
-        "INSERT INTO test_table (first, second) VALUES (3, 4)"
-    )
-
-    yield db.session
-    database.get_sqla_engine().execute("DROP TABLE test_table")
+            cleanup_report_schedule(report_schedule)
 
 
 @pytest.yield_fixture(
-    params=["alert1", "alert2", "alert3", "alert4", "alert5", "alert6"]
+    params=[
+        "alert1",
+        "alert2",
+        "alert3",
+        "alert4",
+        "alert5",
+        "alert6",
+        "alert7",
+        "alert8",
+        "alert9",
+    ]
 )
 def create_no_alert_email_chart(request):
     param_config = {
@@ -338,9 +387,24 @@ def create_no_alert_email_chart(request):
             "validator_config_json": '{"op": "!=", "threshold": 10}',
         },
         "alert6": {
-            "sql": "SELECT first from test_table where first=0",
+            "sql": "SELECT first from test_table where 1=0",
             "validator_type": ReportScheduleValidatorType.NOT_NULL,
             "validator_config_json": "{}",
+        },
+        "alert7": {
+            "sql": "SELECT first from test_table where 1=0",
+            "validator_type": ReportScheduleValidatorType.OPERATOR,
+            "validator_config_json": '{"op": ">", "threshold": 0}',
+        },
+        "alert8": {
+            "sql": "SELECT Null as metric",
+            "validator_type": ReportScheduleValidatorType.NOT_NULL,
+            "validator_config_json": "{}",
+        },
+        "alert9": {
+            "sql": "SELECT Null as metric",
+            "validator_type": ReportScheduleValidatorType.OPERATOR,
+            "validator_config_json": '{"op": ">", "threshold": 0}',
         },
     }
     with app.app_context():
@@ -368,12 +432,12 @@ def create_no_alert_email_chart(request):
 def create_mul_alert_email_chart(request):
     param_config = {
         "alert1": {
-            "sql": "SELECT first from test_table",
+            "sql": "SELECT first, second from test_table",
             "validator_type": ReportScheduleValidatorType.OPERATOR,
             "validator_config_json": '{"op": "<", "threshold": 10}',
         },
         "alert2": {
-            "sql": "SELECT first, second from test_table",
+            "sql": "SELECT first from test_table",
             "validator_type": ReportScheduleValidatorType.OPERATOR,
             "validator_config_json": '{"op": "<", "threshold": 10}',
         },
@@ -428,13 +492,16 @@ def create_invalid_sql_alert_email_chart(request):
                 validator_config_json=param_config[request.param][
                     "validator_config_json"
                 ],
+                grace_period=60 * 60,
             )
             yield report_schedule
 
             cleanup_report_schedule(report_schedule)
 
 
-@pytest.mark.usefixtures("create_report_email_chart")
+@pytest.mark.usefixtures(
+    "load_birth_names_dashboard_with_slices", "create_report_email_chart"
+)
 @patch("superset.reports.notifications.email.send_email_smtp")
 @patch("superset.utils.screenshots.ChartScreenshot.compute_and_cache")
 def test_email_chart_report_schedule(
@@ -470,7 +537,9 @@ def test_email_chart_report_schedule(
         assert_log(ReportState.SUCCESS)
 
 
-@pytest.mark.usefixtures("create_report_email_dashboard")
+@pytest.mark.usefixtures(
+    "load_birth_names_dashboard_with_slices", "create_report_email_dashboard"
+)
 @patch("superset.reports.notifications.email.send_email_smtp")
 @patch("superset.utils.screenshots.DashboardScreenshot.compute_and_cache")
 def test_email_dashboard_report_schedule(
@@ -500,7 +569,9 @@ def test_email_dashboard_report_schedule(
         assert_log(ReportState.SUCCESS)
 
 
-@pytest.mark.usefixtures("create_report_slack_chart")
+@pytest.mark.usefixtures(
+    "load_birth_names_dashboard_with_slices", "create_report_slack_chart"
+)
 @patch("superset.reports.notifications.slack.WebClient.files_upload")
 @patch("superset.utils.screenshots.ChartScreenshot.compute_and_cache")
 def test_slack_chart_report_schedule(
@@ -621,7 +692,31 @@ def test_report_schedule_success_grace_end(create_alert_slack_chart_grace):
     assert create_alert_slack_chart_grace.last_state == ReportState.NOOP
 
 
-@pytest.mark.usefixtures("create_report_email_dashboard")
+@pytest.mark.usefixtures("create_alert_email_chart")
+@patch("superset.reports.notifications.email.send_email_smtp")
+@patch("superset.utils.screenshots.ChartScreenshot.compute_and_cache")
+def test_alert_limit_is_applied(screenshot_mock, email_mock, create_alert_email_chart):
+    """
+    ExecuteReport Command: Test that all alerts apply a SQL limit to stmts
+    """
+
+    with patch.object(
+        create_alert_email_chart.database.db_engine_spec, "execute", return_value=None
+    ) as execute_mock:
+        with patch.object(
+            create_alert_email_chart.database.db_engine_spec,
+            "fetch_data",
+            return_value=None,
+        ) as fetch_data_mock:
+            AsyncExecuteReportScheduleCommand(
+                create_alert_email_chart.id, datetime.utcnow()
+            ).run()
+            assert "LIMIT 2" in execute_mock.call_args[0][1]
+
+
+@pytest.mark.usefixtures(
+    "load_birth_names_dashboard_with_slices", "create_report_email_dashboard"
+)
 @patch("superset.reports.notifications.email.send_email_smtp")
 @patch("superset.utils.screenshots.DashboardScreenshot.compute_and_cache")
 def test_email_dashboard_report_fails(
@@ -645,7 +740,9 @@ def test_email_dashboard_report_fails(
     assert_log(ReportState.ERROR, error_message="Could not connect to SMTP XPTO")
 
 
-@pytest.mark.usefixtures("create_alert_email_chart")
+@pytest.mark.usefixtures(
+    "load_birth_names_dashboard_with_slices", "create_alert_email_chart"
+)
 @patch("superset.reports.notifications.email.send_email_smtp")
 @patch("superset.utils.screenshots.ChartScreenshot.compute_and_cache")
 def test_slack_chart_alert(screenshot_mock, email_mock, create_alert_email_chart):
@@ -698,7 +795,8 @@ def test_email_mul_alert(create_mul_alert_email_chart):
 
 
 @pytest.mark.usefixtures("create_invalid_sql_alert_email_chart")
-def test_invalid_sql_alert(create_invalid_sql_alert_email_chart):
+@patch("superset.reports.notifications.email.send_email_smtp")
+def test_invalid_sql_alert(email_mock, create_invalid_sql_alert_email_chart):
     """
     ExecuteReport Command: Test alert with invalid SQL statements
     """
@@ -707,3 +805,120 @@ def test_invalid_sql_alert(create_invalid_sql_alert_email_chart):
             AsyncExecuteReportScheduleCommand(
                 create_invalid_sql_alert_email_chart.id, datetime.utcnow()
             ).run()
+
+        notification_targets = get_target_from_report_schedule(
+            create_invalid_sql_alert_email_chart
+        )
+        # Assert the email smtp address, asserts a notification was sent with the error
+        assert email_mock.call_args[0][0] == notification_targets[0]
+
+
+@pytest.mark.usefixtures("create_invalid_sql_alert_email_chart")
+@patch("superset.reports.notifications.email.send_email_smtp")
+def test_grace_period_error(email_mock, create_invalid_sql_alert_email_chart):
+    """
+    ExecuteReport Command: Test alert grace period on error
+    """
+    with freeze_time("2020-01-01T00:00:00Z"):
+        with pytest.raises((AlertQueryError, AlertQueryInvalidTypeError)):
+            AsyncExecuteReportScheduleCommand(
+                create_invalid_sql_alert_email_chart.id, datetime.utcnow()
+            ).run()
+
+        # Only needed for MySQL, understand why
+        db.session.commit()
+        notification_targets = get_target_from_report_schedule(
+            create_invalid_sql_alert_email_chart
+        )
+        # Assert the email smtp address, asserts a notification was sent with the error
+        assert email_mock.call_args[0][0] == notification_targets[0]
+        assert (
+            get_notification_error_sent_count(create_invalid_sql_alert_email_chart) == 1
+        )
+
+    with freeze_time("2020-01-01T00:30:00Z"):
+        with pytest.raises((AlertQueryError, AlertQueryInvalidTypeError)):
+            AsyncExecuteReportScheduleCommand(
+                create_invalid_sql_alert_email_chart.id, datetime.utcnow()
+            ).run()
+        db.session.commit()
+        assert (
+            get_notification_error_sent_count(create_invalid_sql_alert_email_chart) == 1
+        )
+
+    # Grace period ends, assert a notification was sent
+    with freeze_time("2020-01-01T01:30:00Z"):
+        with pytest.raises((AlertQueryError, AlertQueryInvalidTypeError)):
+            AsyncExecuteReportScheduleCommand(
+                create_invalid_sql_alert_email_chart.id, datetime.utcnow()
+            ).run()
+        db.session.commit()
+        assert (
+            get_notification_error_sent_count(create_invalid_sql_alert_email_chart) == 2
+        )
+
+
+@pytest.mark.usefixtures("create_invalid_sql_alert_email_chart")
+@patch("superset.reports.notifications.email.send_email_smtp")
+@patch("superset.utils.screenshots.ChartScreenshot.compute_and_cache")
+def test_grace_period_error_flap(
+    screenshot_mock, email_mock, create_invalid_sql_alert_email_chart
+):
+    """
+    ExecuteReport Command: Test alert grace period on error
+    """
+    with freeze_time("2020-01-01T00:00:00Z"):
+        with pytest.raises((AlertQueryError, AlertQueryInvalidTypeError)):
+            AsyncExecuteReportScheduleCommand(
+                create_invalid_sql_alert_email_chart.id, datetime.utcnow()
+            ).run()
+        db.session.commit()
+        # Assert we have 1 notification sent on the log
+        assert (
+            get_notification_error_sent_count(create_invalid_sql_alert_email_chart) == 1
+        )
+
+    with freeze_time("2020-01-01T00:30:00Z"):
+        with pytest.raises((AlertQueryError, AlertQueryInvalidTypeError)):
+            AsyncExecuteReportScheduleCommand(
+                create_invalid_sql_alert_email_chart.id, datetime.utcnow()
+            ).run()
+        db.session.commit()
+        assert (
+            get_notification_error_sent_count(create_invalid_sql_alert_email_chart) == 1
+        )
+
+    # Change report_schedule to valid
+    create_invalid_sql_alert_email_chart.sql = "SELECT 1 AS metric"
+    create_invalid_sql_alert_email_chart.grace_period = 0
+    db.session.merge(create_invalid_sql_alert_email_chart)
+    db.session.commit()
+
+    with freeze_time("2020-01-01T00:31:00Z"):
+        # One success
+        AsyncExecuteReportScheduleCommand(
+            create_invalid_sql_alert_email_chart.id, datetime.utcnow()
+        ).run()
+        # Grace period ends
+        AsyncExecuteReportScheduleCommand(
+            create_invalid_sql_alert_email_chart.id, datetime.utcnow()
+        ).run()
+
+        db.session.commit()
+
+    create_invalid_sql_alert_email_chart.sql = "SELECT 'first'"
+    create_invalid_sql_alert_email_chart.grace_period = 10
+    db.session.merge(create_invalid_sql_alert_email_chart)
+    db.session.commit()
+
+    # assert that after a success, when back to error we send the error notification
+    # again
+    with freeze_time("2020-01-01T00:32:00Z"):
+        with pytest.raises((AlertQueryError, AlertQueryInvalidTypeError)):
+            AsyncExecuteReportScheduleCommand(
+                create_invalid_sql_alert_email_chart.id, datetime.utcnow()
+            ).run()
+        db.session.commit()
+        assert (
+            get_notification_error_sent_count(create_invalid_sql_alert_email_chart) == 2
+        )
