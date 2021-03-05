@@ -66,6 +66,7 @@ import ScheduleQueryButton from './ScheduleQueryButton';
 import EstimateQueryCostButton from './EstimateQueryCostButton';
 import ShareSqlLabQuery from './ShareSqlLabQuery';
 import SqlEditorLeftBar from './SqlEditorLeftBar';
+import SqlEditorLeftBar2 from './SqlEditorLeftBar2'
 import AceEditorWrapper from './AceEditorWrapper';
 import {
   STATE_TYPE_MAP,
@@ -132,6 +133,7 @@ const StyledToolbar = styled.div`
 const propTypes = {
   actions: PropTypes.object.isRequired,
   database: PropTypes.object,
+  databases: PropTypes.object,
   latestQuery: PropTypes.object,
   tables: PropTypes.array.isRequired,
   editorQueries: PropTypes.array.isRequired,
@@ -147,6 +149,7 @@ const propTypes = {
 
 const defaultProps = {
   database: null,
+  databases: null,
   latestQuery: null,
   hideLeftBar: false,
   scheduleQueryWarning: null,
@@ -696,11 +699,14 @@ class SqlEditor extends React.PureComponent {
           timeout={300}
         >
           <div className="schemaPane">
-            <SqlEditorLeftBar
+            {/* <SqlEditorLeftBar
               database={this.props.database}
               queryEditor={this.props.queryEditor}
               tables={this.props.tables}
               actions={this.props.actions}
+            /> */}
+            <SqlEditorLeftBar2
+              databases={this.props.databases}
             />
           </div>
         </CSSTransition>
