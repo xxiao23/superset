@@ -1357,6 +1357,9 @@ export function fetchSchemaTables(databaseId, schema) {
     .catch(() => {
       handleError(t('Error while fetching table list'));
     });
+  };
+}
+
 export function queryEditorSetFunctionNames(queryEditor, dbId) {
   return function (dispatch) {
     return SupersetClient.get({
