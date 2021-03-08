@@ -7,6 +7,7 @@ import { Collapse, ListGroup, ListGroupItem } from 'react-bootstrap';
 
 import {
     fetchSchemaTables,
+    fetchTableMetadata,
 } from '../actions/sqlLab';
 
 const propTypes = {
@@ -23,7 +24,13 @@ function DatabaseSchemaItem(props) {
         <ListGroup>
             {props.tables && props.tables.length
                 ? props.tables.map((table, index) => {
-                    return <ListGroupItem>{table.value}</ListGroupItem>
+                    return (
+                        <ListGroupItem action onClick={() => {
+                            props.fetchTableMetadata(props.databaseId, props.schema, table.value);
+                        }}>
+                            {table.value}
+                        </ListGroupItem>
+                    );
                 })
                 : "No tables"
             }
@@ -59,6 +66,7 @@ function mapDispatchToProps(dispatch) {
     return bindActionCreators(
         {
             fetchSchemaTables,
+            fetchTableMetadata,
         },
         dispatch,
     );

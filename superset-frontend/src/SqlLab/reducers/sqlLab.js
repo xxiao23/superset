@@ -560,6 +560,16 @@ export default function sqlLabReducer(state = {}, action) {
           [db_schema]: tables,
         }
       }
+    },
+    [actions.FETCH_TABLE_METADATA]() {
+      const databaseId = action.databaseId;
+      const schema = action.schema;
+      const table = action.table;
+      const newTable = action.newTable;
+      return {
+        ...state,
+        tableMetadata: newTable,
+      }
     }
   };
   if (action.type in actionHandlers) {

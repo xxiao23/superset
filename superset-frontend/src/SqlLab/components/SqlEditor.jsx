@@ -707,6 +707,8 @@ class SqlEditor extends React.PureComponent {
             /> */}
             <SqlEditorLeftBar2
               databases={this.props.databases}
+              queryEditor={this.props.queryEditor}
+              actions={this.props.actions}
             />
           </div>
         </CSSTransition>

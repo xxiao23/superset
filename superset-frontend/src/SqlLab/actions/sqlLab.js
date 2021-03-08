@@ -96,6 +96,7 @@ export const CREATE_DATASOURCE_FAILED = 'CREATE_DATASOURCE_FAILED';
 
 export const FETCH_DATABASE_SCHEMAS = 'FETCH_DATABASE_SCEHMAS';
 export const FETCH_SCHEMA_TABLES = 'FETCH_SCHEMA_TABLES';
+export const FETCH_TABLE_METADATA = 'FETCH_TABLE_METADATA';
 
 export const addInfoToast = addInfoToastAction;
 export const addSuccessToast = addSuccessToastAction;
@@ -1325,6 +1326,9 @@ export function fetchDatabaseSchemas(databaseId, databaseName) {
           databaseId,
           schemas,
         });
+      })
+      .catch(() => {
+        dispatch(addDangerToast(t('Error while fetching database schemas')));
       });
   };
 }
@@ -1355,8 +1359,41 @@ export function fetchSchemaTables(databaseId, schema) {
       });
     })
     .catch(() => {
-      handleError(t('Error while fetching table list'));
+      dispatch(addDangerToast(t('Error while fetching table list')));
     });
+  };
+}
+
+export function fetchTableMetadata(databaseId, schema, table) {
+  return dispatch => {
+    return SupersetClient.get({
+      endpoint: encodeURI(
+        `/api/v1/database/${databaseId}/table/` +
+        `${encodeURIComponent(table)}/${encodeURIComponent(schema.value)}/`,
+      ),
+    })
+    .then(({ json }) => {
+      console.log('fetched table metadata for ' + table);
+      console.log(json);
+      const newTable = {
+        ...json,
+        dbId: databaseId,
+        schema: schema.value,
+        expanded: true,
+        isMetadataLoading: false,
+        isExtraMetadataLoading: false,
+      }
+      dispatch({
+        type: FETCH_TABLE_METADATA,
+        databaseId,
+        schema,
+        table,
+        newTable,
+      });
+    })
+    .catch(() => {
+      dispatch(addDangerToast(t('Error while fetching table metadata')));
+    })
   };
 }
 
