@@ -11,15 +11,17 @@ import TableElement from './TableElement';
 const propTypes = {
     actions: PropTypes.object,
     databases: PropTypes.object,
-    table: PropTypes.object,
+    height: PropTypes.number,
     queryEditor: PropTypes.object,
+    table: PropTypes.object,
 }
 
 const defaultProps = {
     actions: {},
     databases: null,
-    table: null,
+    height: 500,
     queryEditor: null,
+    table: null,
 }
 
 const StyledScrollbarContainer = styled.div`
@@ -48,9 +50,13 @@ class SqlEditorLeftBar2 extends React.PureComponent {
         const tableMetaDataHeight = this.props.height - 130; // 130 is the height of the selects above
         return (
             <>
-                <ListGroup>
-                    {items}
-                </ListGroup>
+                <StyledScrollbarContainer>
+                    <StyledScrollbarContent contentHeight={tableMetaDataHeight}>
+                        <ListGroup>
+                            {items}
+                        </ListGroup>
+                    </StyledScrollbarContent>
+                </StyledScrollbarContainer>
                 {this.props.table && (
                     <>
                         <div className="divider" />
