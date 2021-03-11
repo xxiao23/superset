@@ -2779,7 +2779,7 @@ class Superset(BaseSupersetView):  # pylint: disable=too-many-public-methods
         )
 
     @event_logger.log_this
-    @expose("/welcome", methods=["GET", "POST"])
+    @expose("/welcome/")
     def welcome(self) -> FlaskResponse:
         """SQL Editor"""
         payload = {
