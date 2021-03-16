@@ -68,12 +68,12 @@ class TestConnectionDatabaseCommand(BaseCommand):
             raise DatabaseTestConnectionDriverError(
                 message=_("Could not load database driver: {}").format(driver_name),
             )
-        except DBAPIError:
-            raise DatabaseTestConnectionFailedError()
+        except DBAPIError as ex:
+            raise DatabaseTestConnectionFailedError(message=str(ex))
         except SupersetSecurityException as ex:
             raise DatabaseSecurityUnsafeError(message=str(ex))
-        except Exception:
-            raise DatabaseTestConnectionUnexpectedError()
+        except Exception as ex:
+            raise DatabaseTestConnectionUnexpectedError(message=str(ex))
 
     def validate(self) -> None:
         database_name = self._properties.get("database_name")

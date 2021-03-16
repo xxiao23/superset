@@ -607,6 +607,7 @@ class DatabaseRestApi(BaseSupersetModelRestApi):
             TestConnectionDatabaseCommand(g.user, item).run()
             return self.response(200, message="OK")
         except DatabaseTestConnectionFailedError as ex:
+            logger.error("Database test connection error: %s", str(ex))
             return self.response_422(message=str(ex))
 
     @expose("/<int:pk>/related_objects/", methods=["GET"])

@@ -1,6 +1,7 @@
 import React from 'react';
 import { connect } from 'react-redux';
-import { t, styled, css } from '@superset-ui/core';
+import rison from 'rison';
+import { t, styled, css, SupersetClient } from '@superset-ui/core';
 import { ListGroup } from 'react-bootstrap';
 import Collapse from 'src/common/components/Collapse';
 import PropTypes from 'prop-types';
@@ -36,6 +37,26 @@ const StyledScrollbarContent = styled.div`
 class SqlEditorLeftBar2 extends React.PureComponent {
     constructor(props) {
         super(props);
+    }
+
+    componentDidMount() {
+        console.log("SqlEditorLeftBar2 componentDidMount");
+        const queryParams = rison.encode({
+            order_columns: 'database_name',
+            order_direction: 'asc',
+            page: 0,
+            page_size: -1,
+        });
+        const endpoint = encodeURI(`/api/v1/database/?q=${queryParams}`);
+        SupersetClient.get({ endpoint })
+            .then(({ json }) => {
+                console.log("Load databases");
+                console.log(json);
+                this.props.actions.setDatabases(json.result);
+            })
+            .catch(() => {
+                console.log('Error while fetching database list');
+            });
     }
 
     render() {
