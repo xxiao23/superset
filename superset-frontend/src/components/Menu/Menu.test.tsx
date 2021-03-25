@@ -70,7 +70,7 @@ const mockedProps = {
     ],
     brand: {
       path: '/superset/profile/admin/',
-      icon: '/static/assets/images/superset-logo-horiz.png',
+      icon: '/static/assets/images/liangdata-logo-horiz-tmp.png',
       alt: 'Superset',
       width: '126',
     },
