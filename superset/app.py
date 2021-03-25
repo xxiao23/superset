@@ -72,7 +72,7 @@ def create_app() -> Flask:
 class SupersetIndexView(IndexView):
     @expose("/")
     def index(self) -> FlaskResponse:
-        return redirect("/welcome/")
+        return redirect("/superset/welcome/")
 
 
 class SupersetAppInitializer:
@@ -223,7 +223,7 @@ class SupersetAppInitializer:
         #
         if appbuilder.app.config["LOGO_TARGET_PATH"]:
             appbuilder.add_link(
-                "Home", label=__("Home"), href="/welcome/",
+                "Home", label=__("Home"), href="/superset/welcome/",
             )
         appbuilder.add_view(
             AnnotationLayerModelView,
