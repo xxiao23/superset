@@ -7,6 +7,7 @@
         "plural_forms": "nplurals=1; plural=0",
         "lang": "zh"
       },
+      "LiangData": ["量析"],
       "Home": ["主页"],
       "Annotation Layers": ["注释层"],
       "Manage": ["管理"],
