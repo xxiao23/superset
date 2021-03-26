@@ -253,22 +253,22 @@ class SupersetAppInitializer:
             category_icon="fa-table",
         )
         appbuilder.add_separator("Data")
-        # appbuilder.add_view(
-        #     SliceModelView,
-        #     "Charts",
-        #     label=__("Charts"),
-        #     icon="fa-bar-chart",
-        #     category="",
-        #     category_icon="",
-        # )
-        # appbuilder.add_view(
-        #     DashboardModelView,
-        #     "Dashboards",
-        #     label=__("Dashboards"),
-        #     icon="fa-dashboard",
-        #     category="",
-        #     category_icon="",
-        # )
+        appbuilder.add_view(
+            SliceModelView,
+            "Charts",
+            label=__("Charts"),
+            icon="fa-bar-chart",
+            category="",
+            category_icon="",
+        )
+        appbuilder.add_view(
+            DashboardModelView,
+            "Dashboards",
+            label=__("Dashboards"),
+            icon="fa-dashboard",
+            category="",
+            category_icon="",
+        )
         if feature_flag_manager.is_feature_enabled("DYNAMIC_PLUGINS"):
             appbuilder.add_view(
                 DynamicPluginsView,
@@ -340,30 +340,30 @@ class SupersetAppInitializer:
                 category_label=__("Manage"),
                 category_icon="fa-wrench",
             )
-        # appbuilder.add_link(
-        #     "SQL Editor",
-        #     label=_("SQL Editor"),
-        #     href="/superset/sqllab/",
-        #     category_icon="fa-flask",
-        #     icon="fa-flask",
-        #     category="SQL Lab",
-        #     category_label=__("SQL Lab"),
-        # )
-        # appbuilder.add_link(
-        #     __("Saved Queries"),
-        #     href="/savedqueryview/list/",
-        #     icon="fa-save",
-        #     category="SQL Lab",
-        # )
-        # appbuilder.add_link(
-        #     "Query Search",
-        #     label=_("Query History"),
-        #     href="/superset/sqllab/history/",
-        #     icon="fa-search",
-        #     category_icon="fa-flask",
-        #     category="SQL Lab",
-        #     category_label=__("SQL Lab"),
-        # )
+        appbuilder.add_link(
+            "SQL Editor",
+            label=_("SQL Editor"),
+            href="/superset/sqllab/",
+            category_icon="fa-flask",
+            icon="fa-flask",
+            category="SQL Lab",
+            category_label=__("SQL Lab"),
+        )
+        appbuilder.add_link(
+            __("Saved Queries"),
+            href="/savedqueryview/list/",
+            icon="fa-save",
+            category="SQL Lab",
+        )
+        appbuilder.add_link(
+            "Query Search",
+            label=_("Query History"),
+            href="/superset/sqllab/history/",
+            icon="fa-search",
+            category_icon="fa-flask",
+            category="SQL Lab",
+            category_label=__("SQL Lab"),
+        )
         if self.config["CSV_EXTENSIONS"].intersection(
             self.config["ALLOWED_EXTENSIONS"]
         ):
