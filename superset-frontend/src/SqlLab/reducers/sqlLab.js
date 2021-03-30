@@ -30,6 +30,7 @@ import {
   addToArr,
   extendArr,
 } from '../../reduxUtils';
+import { loadingIndicatorCSS } from 'react-select/src/components/indicators';
 
 export default function sqlLabReducer(state = {}, action) {
   const actionHandlers = {
@@ -570,7 +571,13 @@ export default function sqlLabReducer(state = {}, action) {
         ...state,
         tableMetadata: newTable,
       }
-    }
+    },
+    [actions.SET_TABLE_METADATA_LAODING]() {
+      return {
+        ...state,
+        tableMetadataLoading: action.loading,
+      }
+    },
   };
   if (action.type in actionHandlers) {
     return actionHandlers[action.type]();

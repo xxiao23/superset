@@ -97,6 +97,7 @@ export const CREATE_DATASOURCE_FAILED = 'CREATE_DATASOURCE_FAILED';
 export const FETCH_DATABASE_SCHEMAS = 'FETCH_DATABASE_SCEHMAS';
 export const FETCH_SCHEMA_TABLES = 'FETCH_SCHEMA_TABLES';
 export const FETCH_TABLE_METADATA = 'FETCH_TABLE_METADATA';
+export const SET_TABLE_METADATA_LAODING = 'SET_TABLE_METADATA_LOADING';
 
 export const addInfoToast = addInfoToastAction;
 export const addSuccessToast = addSuccessToastAction;
@@ -1364,8 +1365,13 @@ export function fetchSchemaTables(databaseId, schema) {
   };
 }
 
+function setTableMetadataLoading(loading) {
+  return {type: SET_TABLE_METADATA_LAODING, loading};
+}
+
 export function fetchTableMetadata(databaseId, schema, table) {
   return dispatch => {
+    dispatch(setTableMetadataLoading(true));
     return SupersetClient.get({
       endpoint: encodeURI(
         `/api/v1/database/${databaseId}/table/` +
@@ -1390,9 +1396,11 @@ export function fetchTableMetadata(databaseId, schema, table) {
         table,
         newTable,
       });
+      dispatch(setTableMetadataLoading(false));
     })
     .catch(() => {
       dispatch(addDangerToast(t('Error while fetching table metadata')));
+      dispatch(setTableMetadataLoading(false));
     })
   };
 }

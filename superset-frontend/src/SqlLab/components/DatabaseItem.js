@@ -3,6 +3,8 @@ import { connect } from 'react-redux';
 import PropTypes from 'prop-types';
 import { bindActionCreators } from 'redux';
 import { Collapse, ListGroup, ListGroupItem } from 'react-bootstrap';
+import { trackPromise, usePromiseTracker } from "react-promise-tracker";
+import Loader from 'react-loader-spinner';
 
 import {
     fetchDatabaseSchemas
@@ -18,9 +20,8 @@ const defaultProps = {
 }
 
 function DatabaseItem(props) {
+    const { promiseInProgress } = usePromiseTracker({area: props.db_name});
     const [open, setOpen] = useState(false);
-    console.log('DatabaseItem props:');
-    console.log(props);
     const schema_divs = (
         <ListGroup>
             {props.schemas && props.schemas.length
@@ -36,13 +37,28 @@ function DatabaseItem(props) {
     return (
         <>
             <ListGroupItem action onClick={() => {
-                console.log(open);
+                if (!open) {
+                    trackPromise(
+                        props.fetchDatabaseSchemas(props.db_id, props.db_name),
+                        props.db_name);
+                }
                 setOpen(!open);
-                props.fetchDatabaseSchemas(props.db_id, props.db_name);
             }}>
-                {props.db_name}
+                <span>{props.db_name}</span>
+                {promiseInProgress &&
+                    <div
+                        style={{
+                            width: "100%",
+                            height: "100",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center"
+                        }}
+                    >
+                        <Loader type="ThreeDots" color="#2BAD60" height="50" width="50" />
+                    </div>}
             </ListGroupItem>
-            <Collapse in={open}>
+            <Collapse in={open && !promiseInProgress}>
                 {schema_divs}
             </Collapse>
         </>

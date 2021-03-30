@@ -5,6 +5,7 @@ import { t, styled, css, SupersetClient } from '@superset-ui/core';
 import { ListGroup } from 'react-bootstrap';
 import Collapse from 'src/common/components/Collapse';
 import PropTypes from 'prop-types';
+import Loader from 'react-loader-spinner';
 
 import DatabaseItem from './DatabaseItem';
 import TableElement from './TableElement';
@@ -15,6 +16,7 @@ const propTypes = {
     height: PropTypes.number,
     queryEditor: PropTypes.object,
     table: PropTypes.object,
+    tableLoading: PropTypes.bool
 }
 
 const defaultProps = {
@@ -23,6 +25,7 @@ const defaultProps = {
     height: 500,
     queryEditor: null,
     table: null,
+    tableLoading: false,
 }
 
 const StyledScrollbarContainer = styled.div`
@@ -78,7 +81,19 @@ class SqlEditorLeftBar2 extends React.PureComponent {
                         </ListGroup>
                     </StyledScrollbarContent>
                 </StyledScrollbarContainer>
-                {this.props.table && (
+                {this.props.tableLoading &&
+                    <div
+                        style={{
+                            width: "100%",
+                            height: "100",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center"
+                        }}
+                    >
+                        <Loader type="ThreeDots" color="#2BAD60" height="50" width="50" />
+                    </div>}
+                {this.props.table && !this.props.tableLoading &&
                     <>
                         <div className="divider" />
                         <StyledScrollbarContainer>
@@ -87,25 +102,25 @@ class SqlEditorLeftBar2 extends React.PureComponent {
                                     ghost
                                     expandIconPosition="right"
                                     css={theme => css`
-                .ant-collapse-item {
-                  margin-bottom: ${theme.gridUnit * 3}px;
-                }
-                .ant-collapse-header {
-                  padding: 0px !important;
-                  display: flex;
-                  align-items: center;
-                }
-                .ant-collapse-content-box {
-                  padding: 0px ${theme.gridUnit * 4}px 0px 0px !important;
-                }
-                .ant-collapse-arrow {
-                  top: ${theme.gridUnit * 2}px !important;
-                  color: ${theme.colors.primary.dark1} !important;
-                  &: hover {
-                    color: ${theme.colors.primary.dark2} !important;
-                  }
-                }
-              `}
+                                       .ant-collapse-item {
+                                         margin-bottom: ${theme.gridUnit * 3}px;
+                                       }
+                                       .ant-collapse-header {
+                                         padding: 0px !important;
+                                         display: flex;
+                                         align-items: center;
+                                       }
+                                       .ant-collapse-content-box {
+                                         padding: 0px ${theme.gridUnit * 4}px 0px 0px !important;
+                                       }
+                                       .ant-collapse-arrow {
+                                         top: ${theme.gridUnit * 2}px !important;
+                                         color: ${theme.colors.primary.dark1} !important;
+                                         &: hover {
+                                           color: ${theme.colors.primary.dark2} !important;
+                                       }
+                                     }
+                                  `}
                                 >
                                     <TableElement
                                         table={this.props.table}
@@ -116,7 +131,7 @@ class SqlEditorLeftBar2 extends React.PureComponent {
                             </StyledScrollbarContent>
                         </StyledScrollbarContainer>
                     </>
-                )}
+                }
             </>
         )
     }
@@ -127,8 +142,9 @@ SqlEditorLeftBar2.propTypes = propTypes;
 function mapStateToProps(state, props) {
     const { sqlLab } = state;
     const table = sqlLab.tableMetadata;
+    const tableLoading = sqlLab.tableMetadataLoading;
 
-    return { sqlLab, ...props, table };
+    return { sqlLab, ...props, table, tableLoading };
 }
 
 export default connect(mapStateToProps, null)(SqlEditorLeftBar2);
