@@ -30,7 +30,6 @@ import {
   addToArr,
   extendArr,
 } from '../../reduxUtils';
-import { loadingIndicatorCSS } from 'react-select/src/components/indicators';
 
 export default function sqlLabReducer(state = {}, action) {
   const actionHandlers = {
