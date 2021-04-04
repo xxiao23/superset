@@ -72,7 +72,9 @@ def create_app() -> Flask:
 class SupersetIndexView(IndexView):
     @expose("/")
     def index(self) -> FlaskResponse:
-        return redirect("/superset/welcome/")
+        return self.render_template(
+            "superset/basic.html", entry="p1", bootstrap_data={}
+        )
 
 
 class SupersetAppInitializer:

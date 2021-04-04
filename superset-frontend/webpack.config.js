@@ -211,6 +211,7 @@ const config = {
     menu: addPreamble('src/views/menu.tsx'),
     profile: addPreamble('/src/profile/index.tsx'),
     showSavedQuery: [path.join(APP_DIR, '/src/showSavedQuery/index.jsx')],
+    p1: addPreamble('/src/p1/index.tsx'),
   },
   output,
   stats: 'minimal',
