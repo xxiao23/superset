@@ -699,17 +699,17 @@ class SqlEditor extends React.PureComponent {
           timeout={300}
         >
           <div className="schemaPane">
-            {/* <SqlEditorLeftBar
+            <SqlEditorLeftBar
               database={this.props.database}
               queryEditor={this.props.queryEditor}
               tables={this.props.tables}
               actions={this.props.actions}
-            /> */}
-            <SqlEditorLeftBar2
+            />
+            {/* <SqlEditorLeftBar2
               databases={this.props.databases}
               queryEditor={this.props.queryEditor}
               actions={this.props.actions}
-            />
+            /> */}
           </div>
         </CSSTransition>
         {this.queryPane()}
